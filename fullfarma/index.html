@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Días Producto · Full Farma</title>
+<title>Días producto</title>
 <link rel="icon" href="/fulllogo.png">
 <style>
 :root{--r:#1565a8;--rd:#0b3d7a;--g:#5fae2e;--bg:#fff;--ink:#222;--ln:#d6e0ea;--ok:#e6f4dc;--okt:#4a9d1f;--warn:#e6f0fa;--full:#bcd6ee}
@@ -104,7 +104,7 @@ dialog input{width:100%;margin:6px 0}
 </head>
 <body>
 <header>
-  <h1>Días producto · Full Farma</h1>
+  <h1 id="ttl">Días producto</h1>
   <div class="row">
     <div id="fs" class="r"></div>
     <span class="hr"><button id="ayb">¿Cómo funciona?</button><button id="adm">Admin</button></span>
@@ -179,6 +179,16 @@ const SB_URL = 'https://vmseqwogmuiyqtjgzctt.supabase.co';
 const SB_KEY = 'sb_publishable_uZITUaJiJUAZKQVBzGnusw_VMFp72b2';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
+// La cadena (cliente) sale de la ruta: /fullfarma/ -> "fullfarma"
+const SLUG = (location.pathname.split('/').filter(Boolean)[0] || '').toLowerCase().replace(/\.html$/, '');
+if (!/^[a-z0-9-]+$/.test(SLUG) || SLUG === 'index') {
+  document.body.innerHTML = '<p style="padding:24px;font:16px system-ui">No se encontró la cadena en la dirección.</p>';
+  throw new Error('sin slug');
+}
+const P = SLUG + ':'; // prefijo de localStorage por cadena
+let NOM = '';
+const vencida = m => /sesi|venc/i.test(m || '');
+
 const $ = s => document.querySelector(s);
 const el_reset = () => { const c = $('#cfg'); if (c) c.dataset.sg = ''; };
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -192,7 +202,7 @@ const ts = n => pad(Math.floor(n / 60)) + ':' + pad(n % 60);
 const h12 = t => { const n = typeof t === 'number' ? t : mins(t), h = Math.floor(n / 60) % 24; return `${h % 12 || 12}:${pad(n % 60)} ${h < 12 ? 'AM' : 'PM'}`; };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fechaTxt = d => { const [a, b, c] = d.split('-'); return `${DIAS[new Date(+a, +b - 1, +c).getDay()]} ${c}/${b}/${a}`; };
-const compartir = (f, d, i, e, lab, prod, code) => `Mi reserva en Días de producto · Más por Menos\nFarmacia: ${f}\nDía: ${fechaTxt(d)}\nHorario: ${h12(i)} a ${h12(e)}\nLaboratorio: ${lab}${prod ? '\nProducto: ' + prod : ''}\nCódigo para corregir o cancelar: ${code}`;
+const compartir = (f, d, i, e, lab, prod, code) => `Mi reserva en Días de producto · ${NOM}\nFarmacia: ${f}\nDía: ${fechaTxt(d)}\nHorario: ${h12(i)} a ${h12(e)}\nLaboratorio: ${lab}${prod ? '\nProducto: ' + prod : ''}\nCódigo para corregir o cancelar: ${code}`;
 const hoy = () => { const t = new Date(); return iso(t.getFullYear(), t.getMonth(), t.getDate()); };
 
 // Ventanas emergentes propias (reemplazan alert, confirm y prompt)
@@ -206,7 +216,7 @@ function msg({ title = '', text = '', code = '', share = '', input = '', ok = 'A
       catch { const r = document.createRange(); r.selectNodeContents($('#mc')); const g = getSelection(); g.removeAllRanges(); g.addRange(r); try { document.execCommand('copy'); } catch { } }
       cp.textContent = '¡Copiado!';
     };
-    wa.onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(share || ('Mi código de reserva en Días de producto · Más por Menos: ' + code)), '_blank');
+    wa.onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(share || ('Mi código de reserva en Días de producto · ' + NOM + ': ' + code)), '_blank');
     i.hidden = !input; i.value = ''; i.type = input === 'password' ? 'password' : 'text';
     $('#mok').textContent = ok; $('#mno').hidden = !cancel;
     const done = v => { d.oncancel = null; $('#mf').onsubmit = null; $('#mno').onclick = null; if (d.open) d.close(); res(v); };
@@ -272,7 +282,7 @@ document.addEventListener('keydown', e => {
   } else if ((e.key === 'Enter' || e.key === ' ') && e.target.tagName === 'LI') { e.preventDefault(); e.target.click(); }
 });
 
-let F = [], R = [], fid = null, day = null, pin = null, rol = null, lim = null, gap = null, ed = null;
+let F = [], R = [], fid = null, day = null, tok = null, lim = null, gap = null, ed = null;
 let y = new Date().getFullYear(), m = new Date().getMonth();
 const fa = () => F.find(f => f.id == fid);
 
@@ -294,7 +304,7 @@ function segs(date) {
 // Código para corregir o cancelar la propia reserva
 const key = (f, d, h) => `${f}|${d}|${hh(h)}`;
 const kr = r => key(r.farmacia_id, r.fecha, r.hora_inicio);
-const CK = 'cods';
+const CK = P + 'cods';
 const cods = () => { try { return JSON.parse(localStorage.getItem(CK) || '{}'); } catch { return {}; } };
 const saveCod = (k, c) => { try { const o = cods(); o[k] = c; localStorage.setItem(CK, JSON.stringify(o)); } catch { } };
 const dropCod = k => { try { const o = cods(); delete o[k]; localStorage.setItem(CK, JSON.stringify(o)); } catch { } };
@@ -309,13 +319,14 @@ async function load(quiet) {
   const seq = ++loadSeq; // si salen varias cargas a la vez, solo vale la más reciente
   const ini = iso(y, m, 1), fin = m === 11 ? iso(y + 1, 0, 1) : iso(y, m + 1, 1);
   const [a, c] = await Promise.all([
-    sb.from('farmacias').select('*').order('id'),
-    sb.from('reservas').select('*').gte('fecha', ini).lt('fecha', fin)
+    sb.rpc('cadena_info', { s: SLUG }),
+    sb.rpc('cadena_reservas', { s: SLUG, d1: ini, d2: fin })
   ]);
   if (seq !== loadSeq) return;
-  if (a.error || c.error) { if (!quiet) ui.alert('Revisa SB_URL y SB_KEY.', 'No se pudo conectar con la base de datos'); return; }
-  F = a.data; R = c.data;
-  if (fid == null) { try { fid = +localStorage.getItem('fid') || null; } catch { } }
+  if (a.error || c.error || !a.data || !Array.isArray(a.data.farmacias)) { if (!quiet) ui.alert('Revisa la dirección e intenta de nuevo.', 'No se pudo cargar el calendario'); return; }
+  NOM = a.data.nombre || NOM; document.title = 'Días producto · ' + NOM; $('#ttl').textContent = 'Días producto · ' + NOM;
+  F = [...a.data.farmacias].sort((p, q) => p.id - q.id); R = c.data || [];
+  if (fid == null) { try { fid = +localStorage.getItem(P+'fid') || null; } catch { } }
   if (!F.some(f => f.id == fid)) { fid = F[0]?.id; day = null; }
   render();
 }
@@ -327,10 +338,10 @@ function render() {
     el._sg = sg;
     dd(el, F.map(f => ({ v: f.id, t: f.nombre })), fid, v => { fid = +v; day = null; render(); }, 'Farmacia');
   }
-  if (fid != null) { try { localStorage.setItem('fid', fid); } catch { } }
+  if (fid != null) { try { localStorage.setItem(P+'fid', fid); } catch { } }
   $('#mes').textContent = MESES[m] + ' ' + y;
-  $('#adm').textContent = pin ? 'Salir de admin' : 'Admin';
-  $('#pdfrow').style.display = pin ? '' : 'none';
+  $('#adm').textContent = tok ? 'Salir de admin' : 'Admin';
+  $('#pdfrow').style.display = tok ? '' : 'none';
   renderCfg();
   renderUbi();
   renderMonth();
@@ -339,10 +350,10 @@ function render() {
 
 // Configuración del horario (solo admin): todo con listas, sin escribir horas
 function renderCfg() {
-  const el = $('#cfg'); el.hidden = !pin;
-  if (!pin || !fa()) { el.dataset.sg = ''; return; }
-  const f = fa(), L = lim || { rol: 'normal', cuota: 1 }, n = F.length, sup = L.rol === 'super', blq = !sup && n >= L.cuota ? ' disabled' : '';
-  const sg = [f.id, f.nombre, f.hora_apertura, f.hora_cierre, f.paso_min, L.rol, L.cuota, n].join('|');
+  const el = $('#cfg'); el.hidden = !tok;
+  if (!tok || !fa()) { el.dataset.sg = ''; return; }
+  const f = fa(), L = lim || { cuota: 1, usadas: F.length }, n = L.usadas ?? F.length, blq = n >= L.cuota ? ' disabled' : '';
+  const sg = [f.id, f.nombre, f.hora_apertura, f.hora_cierre, f.paso_min, L.cuota, n].join('|');
   if (el.dataset.sg === sg) return; // no pisar lo que el admin está eligiendo
   el.dataset.sg = sg;
   el.innerHTML = `<div class="row"><b>Nombre</b><input id="cn" value="${esc(f.nombre)}" maxlength="60" aria-label="Nombre de la farmacia" style="flex:1;min-width:160px"><button class="p" id="cnb">Guardar nombre</button></div>
@@ -351,10 +362,7 @@ function renderCfg() {
     <button class="p" id="cg">Guardar horario</button></div>
     <div class="row" style="margin-top:10px">
     <button class="p" id="cad"${blq}>Agregar farmacia</button><button class="d" id="cdel">Eliminar esta farmacia</button><button id="cpa">Papelera</button></div>
-    ${sup
-      ? `<div class="row" style="margin-top:10px"><b>Admin principal</b><span class="lim">Farmacias: ${n} · el admin normal puede tener hasta ${L.cuota}</span></div>
-    <div class="row" style="margin-top:6px">Máximo de farmacias para el admin normal <input id="cq" type="number" min="1" max="999" value="${L.cuota}" style="width:90px" aria-label="Máximo de farmacias para el admin normal"><button class="p" id="cqs">Guardar máximo</button></div>`
-      : `<div class="lim" style="margin-top:8px">Farmacias: ${n}/${L.cuota}</div>`}`;
+    <div class="lim" style="margin-top:8px">Farmacias: ${n}/${L.cuota}</div>`;
   const T = Array.from({ length: 48 }, (_, n) => ({ v: ts(n * 30), t: h12(n * 30) }));
   dd($('#ca'), T, hh(f.hora_apertura), null, 'Hora de apertura');
   dd($('#cc'), T, hh(f.hora_cierre), null, 'Hora de cierre');
@@ -364,15 +372,15 @@ function renderCfg() {
 // Ubicación de la farmacia: la ve todo el mundo, solo el admin la edita
 function renderUbi() {
   const el = $('#ubi'), f = fa(); if (!f) return;
-  const u = f.ubicacion || '', sg = [f.id, u, !!pin].join('|');
+  const u = f.ubicacion || '', sg = [f.id, u, !!tok].join('|');
   if (el.dataset.sg === sg) return; // no pisar lo que el admin está escribiendo
   el.dataset.sg = sg;
-  el.innerHTML = pin
+  el.innerHTML = tok
     ? `<b>Ubicación:</b><textarea id="ubin" rows="2" maxlength="300" aria-label="Ubicación de la farmacia" placeholder="Escribe la dirección o cómo llegar">${esc(u)}</textarea><button class="p" id="ubg">Guardar ubicación</button>`
     : `<b>Ubicación:</b> ${u ? `<span>${esc(u)}</span>` : '<span class="vacio">Sin indicar</span>'}`;
 }
 $('#ubi').onclick = e => {
-  if (e.target.id === 'ubg') admin('admin_set_ubicacion', { fa: fid, u: $('#ubin').value.trim() }, 'Ubicación guardada');
+  if (e.target.id === 'ubg') admin('v2_set_ubicacion', { fa: fid, u: $('#ubin').value.trim() }, 'Ubicación guardada');
 };
 
 function renderMonth() {
@@ -387,7 +395,7 @@ function renderMonth() {
     const txt = used
       ? nom.slice(0, 3).map(n => `<i>${esc(n)}</i>`).join('') + (used > 3 ? `<i class="m">+${used - 3} más</i>` : '')
       : '<small>Libre</small>';
-    html += `<div class="day ${cls} ${date < h && !pin ? 'off' : ''} ${date === day ? 'sel' : ''}" data-d="${date}"><b>${d}</b>${txt}</div>`;
+    html += `<div class="day ${cls} ${date < h && !tok ? 'off' : ''} ${date === day ? 'sel' : ''}" data-d="${date}"><b>${d}</b>${txt}</div>`;
   }
   $('#month').innerHTML = html;
 }
@@ -400,7 +408,7 @@ function renderDay() {
       if (s.r) {
         const r = s.r;
         return `<div class="blk t"><div><b>${h12(s.a)} – ${h12(s.b)}</b><br>${esc(r.laboratorio)}${r.producto ? ' · ' + esc(r.producto) : ''}</div>
-          <div class="row">${pin ? `<button data-x="e${r.id}">Corregir</button><button data-x="r${r.id}">Borrar</button>` : miCod(kr(r))
+          <div class="row">${tok ? `<button data-x="e${r.id}">Corregir</button><button data-x="r${r.id}">Borrar</button>` : miCod(kr(r))
             ? `<button data-x="v${r.id}">Ver código</button><button data-x="e${r.id}">Corregir</button><button data-x="c${r.id}">Cancelar</button>`
             : `<button data-x="k${r.id}">Tengo código</button>`}</div></div>`;
       }
@@ -409,14 +417,15 @@ function renderDay() {
 }
 
 async function limite() {
-  if (!pin) { lim = null; rol = null; return; }
-  const { data } = await sb.rpc('admin_limite', { p: pin });
-  lim = data || null; rol = lim ? lim.rol : null;
+  if (!tok) { lim = null; return; }
+  const { data, error } = await sb.rpc('v2_info', { tok });
+  if (error) { if (vencida(error.message)) tok = null; lim = null; return; }
+  lim = data || null;
 }
 
 async function admin(fn, args, ok, apply) {
-  const { data, error } = await sb.rpc(fn, { p: pin, ...args });
-  if (error) { ui.alert(error.message, 'No se pudo completar'); if (/PIN/.test(error.message)) pin = null; }
+  const { data, error } = await sb.rpc(fn, { tok, ...args });
+  if (error) { ui.alert(error.message, 'No se pudo completar'); if (vencida(error.message)) tok = null; }
   else { if (apply) { apply(); render(); } if (ok) snack(ok); }
   await load();
   await limite(); render();
@@ -436,7 +445,7 @@ function openApartar(g) {
   const st = fa().paso_min, o = [];
   for (let n = Math.ceil(g.a / st) * st; n + st <= g.b; n += st) o.push({ v: ts(n), t: h12(n) });
   dd($('#t1'), o, o[0] && o[0].v, fillHasta, 'Desde'); fillHasta();
-  try { $('#lab').value = localStorage.getItem('lab') || ''; } catch { }
+  try { $('#lab').value = localStorage.getItem(P+'lab') || ''; } catch { }
   $('#prod').value = ''; $('#dlg').showModal();
 }
 function fillHasta() {
@@ -447,7 +456,7 @@ function fillHasta() {
 
 $('#month').onclick = e => {
   const c = e.target.closest('.day');
-  if (!c || !c.dataset.d || (c.classList.contains('off') && !pin)) return;
+  if (!c || !c.dataset.d || (c.classList.contains('off') && !tok)) return;
   day = c.dataset.d; render();
 };
 
@@ -468,12 +477,12 @@ $('#day').onclick = async e => {
     setDD($('#t2'), hh(r.hora_fin), false);
     $('#lab').value = r.laboratorio; $('#prod').value = r.producto || ''; $('#dlg').showModal();
   }
-  if (k === 'c' && await ui.confirm('Se liberará ese horario.', '¿Cancelar tu reserva?', 'Sí, cancelar')) labRpc('lab_del_reserva', { c: miCod(kr(r)), i: id }, kr(r), () => { R = R.filter(z => z.id !== id); }, 'Reserva cancelada');
+  if (k === 'c' && await ui.confirm('Se liberará ese horario.', '¿Cancelar tu reserva?', 'Sí, cancelar')) labRpc('v2_lab_del_reserva', { c: miCod(kr(r)), i: id }, kr(r), () => { R = R.filter(z => z.id !== id); }, 'Reserva cancelada');
   if (k === 'k') {
     const c = ((await ui.prompt('Código de tu reserva')) || '').trim().toUpperCase();
     if (c) { saveCod(kr(r), c); render(); }
   }
-  if (k === 'r' && await ui.confirm('La reserva saldrá del calendario y quedará 90 días en la papelera.', '¿Borrar esta reserva?', 'Sí, borrar')) admin('admin_del_reserva', { i: id }, 'Reserva borrada', () => { R = R.filter(z => z.id !== id); });
+  if (k === 'r' && await ui.confirm('La reserva saldrá del calendario y quedará 90 días en la papelera.', '¿Borrar esta reserva?', 'Sí, borrar')) admin('v2_del_reserva', { i: id }, 'Reserva borrada', () => { R = R.filter(z => z.id !== id); });
 };
 
 $('#cfg').onclick = async e => {
@@ -481,33 +490,27 @@ $('#cfg').onclick = async e => {
   if (e.target.id === 'cnb') {
     const n = $('#cn').value.trim();
     if (n.length < 2) { ui.alert('El nombre debe tener al menos 2 caracteres.', 'Nombre inválido'); return; }
-    admin('admin_set_nombre', { fa: fid, n }, 'Nombre guardado'); return;
+    admin('v2_set_nombre', { fa: fid, n }, 'Nombre guardado'); return;
   }
   if (e.target.id === 'cad') {
     const n = ((await ui.prompt('Nombre de la nueva farmacia')) || '').trim().slice(0, 60);
     if (!n) return;
     if (n.length < 2) { ui.alert('El nombre debe tener al menos 2 caracteres.', 'Nombre inválido'); return; }
-    const id = await admin('admin_add_farmacia', { n }, 'Farmacia agregada');
+    const id = await admin('v2_add_farmacia', { n }, 'Farmacia agregada');
     if (id) { fid = id; day = null; render(); }
     return;
   }
   if (e.target.id === 'cdel') {
     if (F.length < 2) { ui.alert('Debe quedar al menos una farmacia.', 'No se puede eliminar'); return; }
     if (await ui.confirm(`Se borrará "${fa().nombre}" con todas sus reservas. Podrás restaurarla desde la papelera durante 90 días.`, '¿Eliminar farmacia?', 'Sí, eliminar')) {
-      await admin('admin_del_farmacia', { fa: fid }, 'Farmacia eliminada');
+      await admin('v2_del_farmacia', { fa: fid }, 'Farmacia eliminada');
     }
-    return;
-  }
-  if (e.target.id === 'cqs') {
-    const c = parseInt($('#cq').value, 10);
-    if (!Number.isInteger(c) || c < 1 || c > 999) { ui.alert('Escribe un número entre 1 y 999.', 'Máximo inválido'); return; }
-    admin('admin_set_limite', { c }, 'Máximo guardado');
     return;
   }
   if (e.target.id !== 'cg') return;
   const ab = $('#ca').dataset.v, ci = $('#cc').dataset.v;
   if (ci <= ab) { ui.alert('La hora de cierre debe ser después de la de apertura.', 'Horario inválido'); return; }
-  admin('admin_set_horario', { fa: fid, ab, ci, st: +$('#cp').dataset.v }, 'Horario guardado');
+  admin('v2_set_horario', { fa: fid, ab, ci, st: +$('#cp').dataset.v }, 'Horario guardado');
 };
 
 $('#fm').onsubmit = async e => {
@@ -524,19 +527,19 @@ $('#fm').onsubmit = async e => {
       const k1 = kr(r); if (cod && k1 !== k0) { saveCod(k1, cod); dropCod(k0); } // el código va ligado a la hora de inicio
     };
     const args = same ? { i: id, l: lab, pr: prod } : { i: id, ini: ni, fin: nf, l: lab, pr: prod };
-    if (pin) await admin(same ? 'admin_edit_reserva' : 'admin_edit_horario', args, 'Reserva corregida', apply);
+    if (tok) await admin(same ? 'v2_edit_reserva' : 'v2_edit_horario', args, 'Reserva corregida', apply);
     else await labRpc(same ? 'lab_edit_reserva' : 'lab_edit_horario', { c: cod, ...args }, k0, apply, 'Reserva corregida');
     return;
   }
   const i = $('#t1').dataset.v, f2 = $('#t2').dataset.v, c = newCod();
-  const { error } = await sb.rpc('apartar', { fa: fid, d: day, i, e: f2, l: lab, pr: prod, c });
+  const { error } = await sb.rpc('v2_apartar', { s: SLUG, fa: fid, d: day, i, e: f2, l: lab, pr: prod, c });
   $('#dlg').close();
   if (error) ui.alert(error.message, 'No se pudo apartar');
   else {
     saveCod(key(fid, day, i), c);
     R.push({ id: -1, farmacia_id: fid, fecha: day, hora_inicio: i, hora_fin: f2, laboratorio: lab, producto: prod });
     render();
-    try { localStorage.setItem('lab', lab); } catch { }
+    try { localStorage.setItem(P+'lab', lab); } catch { }
     ui.alert(`Reservado de ${h12(i)} a ${h12(f2)}.\nEste es tu código para corregir o cancelar. Guárdalo.`, '¡Reservado!', c, compartir(fa().nombre, day, i, f2, lab, prod, c));
   }
   load();
@@ -549,19 +552,19 @@ $('#prev').onclick = () => { m--; if (m < 0) { m = 11; y--; } day = null; load()
 $('#next').onclick = () => { m++; if (m > 11) { m = 0; y++; } day = null; load(); };
 
 $('#adm').onclick = async () => {
-  if (pin) { pin = null; rol = null; lim = null; el_reset(); render(); return; }
+  if (tok) { const t = tok; tok = null; lim = null; el_reset(); render(); sb.rpc('v2_logout', { tok: t }).then(() => {}, () => {}); return; }
   const p = await ui.prompt('PIN de administrador', 'password');
   if (!p) return;
-  const { data, error } = await sb.rpc('admin_ok', { p });
-  if (data === true) { pin = p; await limite(); render(); }
-  else if (error) ui.alert(error.message, 'Acceso bloqueado');
+  const { data, error } = await sb.rpc('v2_login', { s: SLUG, p });
+  if (error) ui.alert(error.message, 'Acceso bloqueado');
+  else if (data && data.ok && data.token) { tok = data.token; await limite(); render(); }
   else ui.alert('Intenta de nuevo.', 'PIN incorrecto');
 };
 
 // Papelera (solo admin): lo borrado se conserva 90 días y luego se destruye solo
 async function abrePapelera() {
-  const { data, error } = await sb.rpc('admin_papelera', { p: pin });
-  if (error) { ui.alert(error.message, 'No se pudo abrir la papelera'); if (/PIN/.test(error.message)) { pin = null; render(); } return; }
+  const { data, error } = await sb.rpc('v2_papelera', { tok });
+  if (error) { ui.alert(error.message, 'No se pudo abrir la papelera'); if (vencida(error.message)) { tok = null; render(); } return; }
   pintaPapelera(data);
   if (!$('#pp').open) $('#pp').showModal();
 }
@@ -579,13 +582,13 @@ function pintaPapelera(items) {
 }
 $('#pl').onclick = async e => {
   const id = e.target.dataset.r; if (!id) return;
-  const { error } = await sb.rpc('admin_restaurar', { p: pin, i: +id });
+  const { error } = await sb.rpc('v2_restaurar', { tok, i: +id });
   if (error) { ui.alert(error.message, 'No se pudo restaurar'); return; }
   snack('Restaurado'); load(); await limite(); render(); abrePapelera();
 };
 $('#pv').onclick = async () => {
   if (!await ui.confirm('Se borrará todo lo que hay en la papelera. No se puede deshacer.', '¿Vaciar la papelera?', 'Sí, vaciar')) return;
-  const { error } = await sb.rpc('admin_vaciar_papelera', { p: pin });
+  const { error } = await sb.rpc('v2_vaciar_papelera', { tok });
   if (error) { ui.alert(error.message, 'No se pudo vaciar'); return; }
   snack('Papelera vaciada'); abrePapelera();
 };
@@ -599,7 +602,7 @@ const needPdf = () => pdfLibs ||= loadJs('https://cdnjs.cloudflare.com/ajax/libs
   .catch(e => { pdfLibs = null; throw e; });
 
 async function pdf(all) {
-  if (!pin) return;
+  if (!tok) return;
   try { await needPdf(); } catch { ui.alert('Revisa tu conexión e intenta de nuevo.', 'No se pudo preparar el PDF'); return; }
   const doc = new jspdf.jsPDF();
   const list = all ? F : F.filter(f => f.id == fid), n = new Date(y, m + 1, 0).getDate();
@@ -640,11 +643,11 @@ async function checkVersion() {
     if (!r.ok) return;
     const tx = await r.text();
     let h = 5381; for (let i = 0; i < tx.length; i++) h = ((h * 33) ^ tx.charCodeAt(i)) >>> 0;
-    const old = localStorage.getItem('ver');
+    const old = localStorage.getItem(P+'ver');
     if (old && old !== String(h)) {
       if (document.querySelector('dialog[open]')) return; // no interrumpir si hay una ventana abierta
-      localStorage.setItem('ver', h); location.reload();
-    } else localStorage.setItem('ver', h);
+      localStorage.setItem(P+'ver', h); location.reload();
+    } else localStorage.setItem(P+'ver', h);
   } catch { }
 }
 
