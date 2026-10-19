@@ -71,10 +71,10 @@ dialog input{width:100%;margin:6px 0}
 .dd>button::after{content:"";flex:none;width:7px;height:7px;border-right:2px solid var(--r);border-bottom:2px solid var(--r);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
 .dd.open>button{border-color:var(--r)}
 .dd.open>button::after{transform:rotate(-135deg) translateY(-2px)}
-.dd ul{position:absolute;z-index:20;left:0;top:100%;min-width:100%;max-width:min(88vw,320px);max-height:240px;overflow:auto;margin:6px 0 0;padding:4px;list-style:none;background:#fff;color:var(--ink);border:1px solid var(--ln);border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.18)}
+.dd ul{position:absolute;z-index:20;left:0;top:100%;width:max-content;min-width:100%;max-width:min(88vw,320px);max-height:240px;overflow:auto;margin:6px 0 0;padding:4px;list-style:none;background:#fff;color:var(--ink);border:1px solid var(--ln);border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.18)}
 .dd.r ul{left:auto;right:0}
 .dd.up ul{top:auto;bottom:100%;margin:0 0 6px}
-.dd li{padding:8px 12px;border-radius:8px;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
+.dd li{padding:8px 12px;border-radius:8px;cursor:pointer;white-space:normal;overflow-wrap:break-word}
 .dd li:hover,.dd li:focus{background:var(--warn);outline:0}
 .dd li[aria-selected=true]{background:var(--r);color:#fff;font-weight:600}
 .dd li:focus-visible{outline:2px solid var(--rd);outline-offset:-2px}
