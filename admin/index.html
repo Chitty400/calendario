@@ -59,6 +59,12 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
   <div id="pinv"></div>
   <div class="row" style="justify-content:center"><button id="cp">Copiar</button><button class="p" id="dgx">Listo</button></div>
 </dialog>
+<dialog id="dp">
+  <h3 style="margin:0 0 6px;color:var(--rd)" id="dpt"></h3>
+  <p style="margin:0 0 8px">Escribe el PIN nuevo (mínimo 8 caracteres). El anterior deja de funcionar.</p>
+  <input id="pn" autocomplete="off" minlength="8" maxlength="100" style="width:100%">
+  <div class="row" style="margin-top:10px"><button id="pg">Generar uno</button><button class="p" id="ps">Guardar</button><button id="pc">Cancelar</button></div>
+</dialog>
 <div id="sn" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -66,7 +72,7 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 const sb = supabase.createClient('https://vmseqwogmuiyqtjgzctt.supabase.co', 'sb_publishable_uZITUaJiJUAZKQVBzGnusw_VMFp72b2');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let tok = null, L = [];
+let tok = null, L = [], pinId = null;
 const vencida = m => /sesi|venc/i.test(m || '');
 let snT; const snack = t => { const e = $('#sn'); e.textContent = t; e.classList.add('on'); clearTimeout(snT); snT = setTimeout(() => e.classList.remove('on'), 2800); };
 
@@ -81,7 +87,7 @@ function pinta() {
     <div class="row" style="margin-top:8px">
       <label><input type="checkbox" class="ac" ${c.activa ? 'checked' : ''}> Activa</label>
       <label>Máx. sucursales <input type="number" class="cu" min="1" max="999" value="${c.cuota}" style="width:80px"></label>
-      <button class="p gs">Guardar</button><button class="rp">Resetear PIN</button>
+      <button class="p gs">Guardar</button><button class="cpn">Cambiar PIN</button><button class="en">Entrar como admin</button>
     </div></div>`).join('') || '<p>No hay clientes.</p>';
 }
 async function rpc(fn, args) {
@@ -123,13 +129,24 @@ $('#ls').onclick = async e => {
     const r = await rpc('v2_super_set_cadena', { i, a: card.querySelector('.ac').checked, c: cu });
     if (!r.error) { snack('Guardado'); carga(); }
   }
-  if (e.target.classList.contains('rp')) {
-    if (!confirm(`Se creará un PIN nuevo para "${c.nombre}" y el actual dejará de funcionar. ¿Seguir?`)) return;
-    const r = await rpc('v2_super_reset_pin', { i });
-    if (r.data) muestraPin('Nuevo PIN de ' + c.slug, r.data);
+  if (e.target.classList.contains('cpn')) { pinId = i; $('#dpt').textContent = 'Cambiar PIN de ' + c.slug; $('#pn').value = ''; $('#dp').showModal(); }
+  if (e.target.classList.contains('en')) {
+    const w = window.open('', '_blank'); // se abre antes del await para que no lo bloquee el navegador
+    const r = await rpc('v2_super_entrar', { i });
+    if (r.data && w) w.location = `/${r.data.slug}/#t=${r.data.token}`; else if (w) w.close();
   }
 };
 $('#cp').onclick = async () => { try { await navigator.clipboard.writeText($('#pinv').textContent); $('#cp').textContent = '¡Copiado!'; } catch { } };
+const gen = () => { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return [...crypto.getRandomValues(new Uint8Array(10))].map(x => a[x % a.length]).join(''); };
+$('#pg').onclick = () => { $('#pn').value = gen(); };
+$('#pc').onclick = () => $('#dp').close();
+$('#ps').onclick = async () => {
+  const p = $('#pn').value;
+  if (p.length < 8) { alert('El PIN debe tener al menos 8 caracteres.'); return; }
+  const r = await rpc('v2_super_set_pin', { i: pinId, p });
+  $('#pn').value = '';
+  if (!r.error) { $('#dp').close(); snack('PIN cambiado'); }
+};
 $('#dgx').onclick = () => { $('#dg').close(); $('#pinv').textContent = ''; $('#cp').textContent = 'Copiar'; };
 </script>
 </body>
