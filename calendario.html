@@ -323,7 +323,13 @@ async function load(quiet) {
     sb.rpc('cadena_reservas', { s: SLUG, d1: ini, d2: fin })
   ]);
   if (seq !== loadSeq) return;
-  if (a.error || c.error || !a.data || !Array.isArray(a.data.farmacias)) { if (!quiet) ui.alert('Revisa la dirección e intenta de nuevo.', 'No se pudo cargar el calendario'); return; }
+  if (a.error || c.error || !a.data || !Array.isArray(a.data.farmacias)) {
+    if (!quiet) {
+      if (!a.error && !c.error) ui.alert('Revisa la dirección. Esta cadena no existe o está desactivada.', 'Cadena no encontrada');
+      else ui.alert('Revisa tu conexión e intenta de nuevo.', 'No se pudo cargar el calendario');
+    }
+    return;
+  }
   NOM = a.data.nombre || NOM; document.title = 'Días producto · ' + NOM; $('#ttl').textContent = 'Días producto · ' + NOM;
   F = [...a.data.farmacias].sort((p, q) => p.id - q.id); R = c.data || [];
   if (fid == null) { try { fid = +localStorage.getItem(P+'fid') || null; } catch { } }

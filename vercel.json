@@ -1,12 +1,16 @@
 {
+  "redirects": [
+    { "source": "/calendario.html", "destination": "/", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/", "destination": "/landing.html" },
     { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/:slug", "destination": "/calendario.html" }
+    { "source": "/:slug([a-z0-9-]+)", "destination": "/calendario.html" },
+    { "source": "/:slug([a-z0-9-]+)/", "destination": "/calendario.html" }
   ],
   "headers": [
     {
-      "source": "/admin",
+      "source": "/admin(.html)?",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]
