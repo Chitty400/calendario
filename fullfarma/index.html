@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Días Producto · Full Farma</title>
+<link rel="icon" href="/fulllogo.png">
+<style>
+:root{--r:#1565a8;--rd:#0b3d7a;--g:#5fae2e;--bg:#fff;--ink:#222;--ln:#d6e0ea;--ok:#e6f4dc;--okt:#4a9d1f;--warn:#e6f0fa;--full:#bcd6ee}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(90deg,var(--rd),var(--r));border-bottom:4px solid var(--g);color:#fff;padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+h1{font-size:18px;margin:0}
+button,input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--ln)}
+button{cursor:pointer;background:#fff;color:var(--r);border-color:var(--r);font-weight:600}
+button.p{background:var(--r);color:#fff}
+button.d{background:var(--rd);color:#fff;border-color:var(--rd)}
+header button{border-color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+.lim{font-size:13px;color:#555}
+/* En pantallas de PC: título a la izquierda, farmacia al centro, Admin a la derecha */
+@media (min-width:700px){
+  header{display:grid;grid-template-columns:1fr auto 1fr}
+  header .row{display:contents}
+  #fs{justify-self:center}
+  .hr{justify-self:end}
+  #fs.dd.r ul{left:50%;right:auto;transform:translateX(-50%)}
+}
+/* Celular: el selector de farmacia ocupa todo el ancho y el menú se ajusta a la pantalla */
+@media (max-width:699px){
+  #fs{display:block;flex:1 1 100%;min-width:0}
+  #fs.dd.r ul{left:0;right:auto;width:100%;max-width:none}
+}
+footer{max-width:900px;margin:0 auto;padding:8px 16px 24px;text-align:center;font-size:12px;color:#777}
+footer a{color:inherit;text-decoration:underline}
+footer a:hover,footer a:focus-visible{color:var(--r)}
+.hr{display:flex;gap:6px;flex-wrap:wrap}
+button:focus-visible,input:focus-visible{outline:3px solid var(--rd);outline-offset:2px}
+main{max-width:900px;margin:0 auto;padding:16px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.bar b{font-size:17px}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{text-align:center;font-weight:700;color:var(--rd);font-size:12px}
+.day{border:1px solid var(--ln);border-radius:8px;min-height:64px;padding:4px;cursor:pointer;font-size:12px;background:#fff}
+.day b{font-size:14px}
+.day small{display:block;margin-top:4px}
+.day{min-width:0;overflow:hidden}
+.day i{display:block;position:relative;padding-left:10px;text-align:right;font-style:normal;font-size:10px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day i::before{content:"";position:absolute;left:0;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--r)}
+.day i.m{padding-left:0}.day i.m::before{display:none}
+.day.free{background:var(--ok)}.day.some{background:var(--warn)}.day.full{background:var(--full)}
+.day.sel{outline:3px solid var(--rd);outline-offset:-2px}
+.day.off{opacity:.45;cursor:default}.day.nil{border:0;background:none;cursor:default}
+#day{margin-top:20px}
+.ubi{margin-top:16px;padding:10px 12px;border:1px solid var(--ln);border-radius:8px}
+.ubi textarea{display:block;width:100%;font:inherit;padding:8px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--ln);resize:vertical}
+#ubg{display:block;margin-left:auto}
+.ubi span{white-space:pre-line}.ubi .vacio{color:#888}
+.blk{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fff;border:1px solid var(--ln);border-left:5px solid var(--okt);border-radius:8px;padding:10px;margin:6px 0}
+.blk.t{border-left-color:var(--r)}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cfg{background:var(--warn);border:1px solid var(--ln);border-radius:8px;padding:10px;margin-bottom:12px}
+dialog{border:0;border-radius:12px;padding:16px;width:360px;max-width:92vw;overflow:visible}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog input{width:100%;margin:6px 0}
+.fld{display:flex;flex-direction:column;gap:2px;font-size:13px;flex:1;min-width:130px}
+/* Menú desplegable */
+.dd{position:relative;display:inline-block;max-width:100%}
+.dd>button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:8px 12px;border-radius:10px;border-color:var(--ln);background:#fff;color:var(--ink);text-align:left}
+.dd>button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dd>button::after{content:"";flex:none;width:7px;height:7px;border-right:2px solid var(--r);border-bottom:2px solid var(--r);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
+.dd.open>button{border-color:var(--r)}
+.dd.open>button::after{transform:rotate(-135deg) translateY(-2px)}
+.dd ul{position:absolute;z-index:20;left:0;top:100%;min-width:100%;max-width:min(88vw,320px);max-height:240px;overflow:auto;margin:6px 0 0;padding:4px;list-style:none;background:#fff;color:var(--ink);border:1px solid var(--ln);border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.18)}
+.dd.r ul{left:auto;right:0}
+.dd.up ul{top:auto;bottom:100%;margin:0 0 6px}
+.dd li{padding:8px 12px;border-radius:8px;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
+.dd li:hover,.dd li:focus{background:var(--warn);outline:0}
+.dd li[aria-selected=true]{background:var(--r);color:#fff;font-weight:600}
+.dd li:focus-visible{outline:2px solid var(--rd);outline-offset:-2px}
+#mb{width:340px;text-align:center}
+#mb h3{margin:0 0 6px;color:var(--rd)}
+#mb p{margin:0 0 12px;white-space:pre-line}
+#mb p:empty,#mc:empty{display:none}
+#mb input{text-align:center;margin:0 0 12px}
+#mb .row{justify-content:center}
+#mc{font:700 28px/1 ui-monospace,monospace;letter-spacing:.2em;background:var(--warn);border:1px dashed var(--r);border-radius:10px;padding:14px;margin:0 0 12px;color:var(--rd);user-select:all}
+#cpa{margin-left:auto}
+#ay{width:400px}
+#ay h3{margin:0 0 8px;color:var(--rd)}
+#ay ol{margin:0 0 12px;padding-left:20px}
+#ay li{margin:0 0 8px}
+#ay .n{margin:0 0 12px;font-size:13px;color:#666}
+#ay .row{justify-content:flex-end}
+#pp{width:520px;max-width:92vw}
+#pp h3{margin:0 0 4px;color:var(--rd)}
+#pp .n{margin:0 0 10px;font-size:13px;color:#666}
+#pl{max-height:55vh;overflow:auto}
+#pl p{text-align:center;color:#666}
+#sn{position:fixed;left:50%;bottom:20px;z-index:50;max-width:90vw;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#2b2b2b;color:#fff;padding:10px 18px;border-radius:10px;border-left:5px solid var(--okt);box-shadow:0 8px 24px rgba(0,0,0,.3);transition:opacity .2s,transform .2s}
+#sn.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.dd>button::after,#sn{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Días producto · Full Farma</h1>
+  <div class="row">
+    <div id="fs" class="r"></div>
+    <span class="hr"><button id="ayb">¿Cómo funciona?</button><button id="adm">Admin</button></span>
+  </div>
+</header>
+<main>
+  <div id="cfg" class="cfg" hidden></div>
+  <div class="bar">
+    <button id="prev" aria-label="Mes anterior">←</button>
+    <b id="mes"></b>
+    <button id="next" aria-label="Mes siguiente">→</button>
+  </div>
+  <div id="month" class="grid"></div>
+  <div id="day" hidden></div>
+  <div id="ubi" class="ubi"></div>
+  <div class="row" id="pdfrow" style="margin-top:16px;display:none">
+    <button class="p" id="pdf1">Descargar PDF de esta farmacia</button>
+    <button id="pdfA">Descargar PDF de todas</button>
+  </div>
+</main>
+
+<footer><a href="mailto:soychitty@gmail.com">By Chitty's Respawner</a></footer>
+
+<dialog id="dlg">
+  <form id="fm">
+    <h3 id="dt" style="margin:0 0 8px">Apartar horario</h3>
+    <div id="hr" class="row">
+      <div class="fld"><span>Desde</span><div id="t1"></div></div>
+      <div class="fld"><span>Hasta</span><div id="t2"></div></div>
+    </div>
+    <input id="lab" placeholder="Laboratorio" required minlength="2" maxlength="80">
+    <input id="prod" placeholder="Producto" maxlength="120">
+    <div class="row"><button class="p">Apartar</button><button type="button" id="cx">Cancelar</button></div>
+  </form>
+</dialog>
+
+<dialog id="mb">
+  <form id="mf">
+    <h3 id="mt"></h3>
+    <p id="mm"></p>
+    <div id="mc"></div>
+    <input id="mi" autocomplete="off" hidden>
+    <div class="row"><button type="button" id="mcp" hidden>Copiar código</button><button type="button" id="mwa" hidden>Enviar por WhatsApp</button></div>
+    <div class="row" style="margin-top:8px"><button class="p" id="mok">Aceptar</button><button type="button" id="mno">Cancelar</button></div>
+  </form>
+</dialog>
+
+<dialog id="pp">
+  <h3>Papelera</h3>
+  <p class="n">Lo que se borra se guarda 90 días y luego se elimina definitivamente.</p>
+  <div id="pl"></div>
+  <div class="row" style="margin-top:12px;justify-content:space-between"><button class="d" id="pv">Vaciar papelera</button><button id="px">Cerrar</button></div>
+</dialog>
+
+<dialog id="ay">
+  <h3>¿Cómo funciona?</h3>
+  <ol>
+    <li><b>Elige la farmacia</b> en el menú de arriba.</li>
+    <li><b>Toca un día</b> del calendario. En verde está libre; en rosado ya hay reservas.</li>
+    <li><b>Toca "Apartar"</b> en un horario libre, elige desde y hasta qué hora, y escribe tu laboratorio y producto.</li>
+    <li><b>Guarda tu código.</b> Con él puedes corregir o cancelar tu reserva. Si entras desde otro celular, usa "Tengo código".</li>
+  </ol>
+  <p class="n">No hay que descargar ni enviar nada: el sistema no deja que dos laboratorios se crucen en el mismo horario.</p>
+  <div class="row"><button class="p" id="ayx" autofocus>Entendido</button></div>
+</dialog>
+
+<div id="sn" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const SB_URL = 'https://vmseqwogmuiyqtjgzctt.supabase.co';
+const SB_KEY = 'sb_publishable_uZITUaJiJUAZKQVBzGnusw_VMFp72b2';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+const $ = s => document.querySelector(s);
+const el_reset = () => { const c = $('#cfg'); if (c) c.dataset.sg = ''; };
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const pad = n => String(n).padStart(2, '0');
+const iso = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+const hh = t => t.slice(0, 5);
+const mins = t => { const [a, b] = t.split(':'); return +a * 60 + +b; };
+const ts = n => pad(Math.floor(n / 60)) + ':' + pad(n % 60);
+// Formato 12 horas: acepta minutos (480) o texto ("08:00" / "08:00:00")
+const h12 = t => { const n = typeof t === 'number' ? t : mins(t), h = Math.floor(n / 60) % 24; return `${h % 12 || 12}:${pad(n % 60)} ${h < 12 ? 'AM' : 'PM'}`; };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fechaTxt = d => { const [a, b, c] = d.split('-'); return `${DIAS[new Date(+a, +b - 1, +c).getDay()]} ${c}/${b}/${a}`; };
+const compartir = (f, d, i, e, lab, prod, code) => `Mi reserva en Días de producto · Más por Menos\nFarmacia: ${f}\nDía: ${fechaTxt(d)}\nHorario: ${h12(i)} a ${h12(e)}\nLaboratorio: ${lab}${prod ? '\nProducto: ' + prod : ''}\nCódigo para corregir o cancelar: ${code}`;
+const hoy = () => { const t = new Date(); return iso(t.getFullYear(), t.getMonth(), t.getDate()); };
+
+// Ventanas emergentes propias (reemplazan alert, confirm y prompt)
+function msg({ title = '', text = '', code = '', share = '', input = '', ok = 'Aceptar', cancel = false }) {
+  return new Promise(res => {
+    const d = $('#mb'), i = $('#mi');
+    $('#mt').textContent = title; $('#mm').textContent = text; $('#mc').textContent = code;
+    const cp = $('#mcp'), wa = $('#mwa'); cp.hidden = wa.hidden = !code; cp.textContent = 'Copiar código';
+    cp.onclick = async () => {
+      try { await navigator.clipboard.writeText(code); }
+      catch { const r = document.createRange(); r.selectNodeContents($('#mc')); const g = getSelection(); g.removeAllRanges(); g.addRange(r); try { document.execCommand('copy'); } catch { } }
+      cp.textContent = '¡Copiado!';
+    };
+    wa.onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(share || ('Mi código de reserva en Días de producto · Más por Menos: ' + code)), '_blank');
+    i.hidden = !input; i.value = ''; i.type = input === 'password' ? 'password' : 'text';
+    $('#mok').textContent = ok; $('#mno').hidden = !cancel;
+    const done = v => { d.oncancel = null; $('#mf').onsubmit = null; $('#mno').onclick = null; if (d.open) d.close(); res(v); };
+    $('#mf').onsubmit = e => { e.preventDefault(); done(input ? i.value : true); };
+    $('#mno').onclick = () => done(input ? null : false);
+    d.oncancel = e => { e.preventDefault(); done(input || cancel ? (input ? null : false) : true); };
+    d.showModal(); (input ? i : $('#mok')).focus();
+  });
+}
+const ui = {
+  alert: (text, title = 'Aviso', code = '', share = '') => msg({ title, text, code, share }),
+  confirm: (text, title = '¿Confirmar?', ok = 'Aceptar') => msg({ title, text, ok, cancel: true }),
+  prompt: (title, kind = 'text') => msg({ title, input: kind, cancel: true })
+};
+
+// Aviso breve de confirmación
+let snT;
+function snack(t) {
+  const el = $('#sn'); el.textContent = t; el.classList.add('on');
+  clearTimeout(snT); snT = setTimeout(() => el.classList.remove('on'), 2800);
+}
+
+// Menú desplegable propio: dd(contenedor, [{v, t}], valorActual, alCambiar, etiqueta)
+function dd(host, opts, val, cb, label) {
+  host.classList.add('dd'); host._o = opts; host._cb = cb;
+  host.innerHTML = `<button type="button" aria-haspopup="listbox" aria-label="${esc(label)}"><span></span></button><ul role="listbox" hidden></ul>`;
+  setDD(host, val, false);
+}
+function setDD(host, val, fire) {
+  const o = host._o.find(x => String(x.v) === String(val)) || host._o[0];
+  host.dataset.v = o ? o.v : '';
+  host.querySelector('button span').textContent = o ? o.t : '—';
+  host.querySelector('ul').innerHTML = host._o.map(x => `<li role="option" tabindex="-1" data-v="${esc(x.v)}" aria-selected="${!!o && String(x.v) === String(o.v)}">${esc(x.t)}</li>`).join('');
+  if (fire && host._cb) host._cb(host.dataset.v);
+}
+function openDD(h) {
+  document.querySelectorAll('.dd.open').forEach(closeDD);
+  const u = h.querySelector('ul'); u.hidden = false; h.classList.add('open');
+  h.classList.toggle('up', h.getBoundingClientRect().bottom + 250 > innerHeight && h.getBoundingClientRect().top > 250);
+  const s = u.querySelector('[aria-selected=true]') || u.firstElementChild;
+  if (s) { u.scrollTop = s.offsetTop - u.clientHeight / 2; s.focus({ preventScroll: true }); }
+}
+function closeDD(h) { h.classList.remove('open', 'up'); h.querySelector('ul').hidden = true; }
+document.addEventListener('click', e => {
+  const h = e.target.closest('.dd');
+  document.querySelectorAll('.dd.open').forEach(x => { if (x !== h) closeDD(x); });
+  if (!h) return;
+  const li = e.target.closest('li');
+  if (li) {
+    const v = li.dataset.v; closeDD(h); h.querySelector('button').focus();
+    if (v !== h.dataset.v) setDD(h, v, true);
+  } else if (e.target.closest('button')) h.classList.contains('open') ? closeDD(h) : openDD(h);
+});
+document.addEventListener('keydown', e => {
+  const h = e.target.closest && e.target.closest('.dd'); if (!h) return;
+  const open = h.classList.contains('open'), lis = [...h.querySelectorAll('li')];
+  if (e.key === 'Escape' && open) { e.preventDefault(); closeDD(h); h.querySelector('button').focus(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!open) { openDD(h); return; }
+    const i = lis.indexOf(document.activeElement), n = e.key === 'ArrowDown' ? i + 1 : i - 1;
+    lis[Math.max(0, Math.min(lis.length - 1, n))].focus();
+  } else if ((e.key === 'Enter' || e.key === ' ') && e.target.tagName === 'LI') { e.preventDefault(); e.target.click(); }
+});
+
+let F = [], R = [], fid = null, day = null, pin = null, rol = null, lim = null, gap = null, ed = null;
+let y = new Date().getFullYear(), m = new Date().getMonth();
+const fa = () => F.find(f => f.id == fid);
+
+// Huecos y reservas de un día, en orden
+function segs(date) {
+  const f = fa(), ci = mins(f.hora_cierre), out = [];
+  const rr = R.filter(r => r.farmacia_id == fid && r.fecha == date).sort((a, b) => mins(a.hora_inicio) - mins(b.hora_inicio));
+  let cur = mins(f.hora_apertura);
+  for (const r of rr) {
+    const a = mins(r.hora_inicio), b = mins(r.hora_fin);
+    if (a > cur) out.push({ a: cur, b: a });
+    out.push({ a, b, r });
+    cur = Math.max(cur, b);
+  }
+  if (cur < ci) out.push({ a: cur, b: ci });
+  return out;
+}
+
+// Código para corregir o cancelar la propia reserva
+const key = (f, d, h) => `${f}|${d}|${hh(h)}`;
+const kr = r => key(r.farmacia_id, r.fecha, r.hora_inicio);
+const CK = 'cods';
+const cods = () => { try { return JSON.parse(localStorage.getItem(CK) || '{}'); } catch { return {}; } };
+const saveCod = (k, c) => { try { const o = cods(); o[k] = c; localStorage.setItem(CK, JSON.stringify(o)); } catch { } };
+const dropCod = k => { try { const o = cods(); delete o[k]; localStorage.setItem(CK, JSON.stringify(o)); } catch { } };
+const miCod = k => cods()[k];
+const newCod = () => {
+  const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', v = crypto.getRandomValues(new Uint8Array(6));
+  return [...v].map(x => a[x % a.length]).join('');
+};
+
+let loadSeq = 0;
+async function load(quiet) {
+  const seq = ++loadSeq; // si salen varias cargas a la vez, solo vale la más reciente
+  const ini = iso(y, m, 1), fin = m === 11 ? iso(y + 1, 0, 1) : iso(y, m + 1, 1);
+  const [a, c] = await Promise.all([
+    sb.from('farmacias').select('*').order('id'),
+    sb.from('reservas').select('*').gte('fecha', ini).lt('fecha', fin)
+  ]);
+  if (seq !== loadSeq) return;
+  if (a.error || c.error) { if (!quiet) ui.alert('Revisa SB_URL y SB_KEY.', 'No se pudo conectar con la base de datos'); return; }
+  F = a.data; R = c.data;
+  if (fid == null) { try { fid = +localStorage.getItem('fid') || null; } catch { } }
+  if (!F.some(f => f.id == fid)) { fid = F[0]?.id; day = null; }
+  render();
+}
+
+function render() {
+  // El selector de farmacia solo se reconstruye si cambió, para no cerrarlo con las actualizaciones automáticas
+  const el = $('#fs'), sg = JSON.stringify([F.map(f => [f.id, f.nombre]), fid]);
+  if (el._sg !== sg) {
+    el._sg = sg;
+    dd(el, F.map(f => ({ v: f.id, t: f.nombre })), fid, v => { fid = +v; day = null; render(); }, 'Farmacia');
+  }
+  if (fid != null) { try { localStorage.setItem('fid', fid); } catch { } }
+  $('#mes').textContent = MESES[m] + ' ' + y;
+  $('#adm').textContent = pin ? 'Salir de admin' : 'Admin';
+  $('#pdfrow').style.display = pin ? '' : 'none';
+  renderCfg();
+  renderUbi();
+  renderMonth();
+  if (day) renderDay(); else $('#day').hidden = true;
+}
+
+// Configuración del horario (solo admin): todo con listas, sin escribir horas
+function renderCfg() {
+  const el = $('#cfg'); el.hidden = !pin;
+  if (!pin || !fa()) { el.dataset.sg = ''; return; }
+  const f = fa(), L = lim || { rol: 'normal', cuota: 1 }, n = F.length, sup = L.rol === 'super', blq = !sup && n >= L.cuota ? ' disabled' : '';
+  const sg = [f.id, f.nombre, f.hora_apertura, f.hora_cierre, f.paso_min, L.rol, L.cuota, n].join('|');
+  if (el.dataset.sg === sg) return; // no pisar lo que el admin está eligiendo
+  el.dataset.sg = sg;
+  el.innerHTML = `<div class="row"><b>Nombre</b><input id="cn" value="${esc(f.nombre)}" maxlength="60" aria-label="Nombre de la farmacia" style="flex:1;min-width:160px"><button class="p" id="cnb">Guardar nombre</button></div>
+    <b style="display:block;margin-top:10px">Horario</b>
+    <div class="row" style="margin-top:6px">Abre <div id="ca"></div> Cierra <div id="cc"></div> Reservas cada <div id="cp"></div>
+    <button class="p" id="cg">Guardar horario</button></div>
+    <div class="row" style="margin-top:10px">
+    <button class="p" id="cad"${blq}>Agregar farmacia</button><button class="d" id="cdel">Eliminar esta farmacia</button><button id="cpa">Papelera</button></div>
+    ${sup
+      ? `<div class="row" style="margin-top:10px"><b>Admin principal</b><span class="lim">Farmacias: ${n} · el admin normal puede tener hasta ${L.cuota}</span></div>
+    <div class="row" style="margin-top:6px">Máximo de farmacias para el admin normal <input id="cq" type="number" min="1" max="999" value="${L.cuota}" style="width:90px" aria-label="Máximo de farmacias para el admin normal"><button class="p" id="cqs">Guardar máximo</button></div>`
+      : `<div class="lim" style="margin-top:8px">Farmacias: ${n}/${L.cuota}</div>`}`;
+  const T = Array.from({ length: 48 }, (_, n) => ({ v: ts(n * 30), t: h12(n * 30) }));
+  dd($('#ca'), T, hh(f.hora_apertura), null, 'Hora de apertura');
+  dd($('#cc'), T, hh(f.hora_cierre), null, 'Hora de cierre');
+  dd($('#cp'), [15, 30, 60].map(p => ({ v: p, t: p + ' min' })), f.paso_min, null, 'Duración mínima de reserva');
+}
+
+// Ubicación de la farmacia: la ve todo el mundo, solo el admin la edita
+function renderUbi() {
+  const el = $('#ubi'), f = fa(); if (!f) return;
+  const u = f.ubicacion || '', sg = [f.id, u, !!pin].join('|');
+  if (el.dataset.sg === sg) return; // no pisar lo que el admin está escribiendo
+  el.dataset.sg = sg;
+  el.innerHTML = pin
+    ? `<b>Ubicación:</b><textarea id="ubin" rows="2" maxlength="300" aria-label="Ubicación de la farmacia" placeholder="Escribe la dirección o cómo llegar">${esc(u)}</textarea><button class="p" id="ubg">Guardar ubicación</button>`
+    : `<b>Ubicación:</b> ${u ? `<span>${esc(u)}</span>` : '<span class="vacio">Sin indicar</span>'}`;
+}
+$('#ubi').onclick = e => {
+  if (e.target.id === 'ubg') admin('admin_set_ubicacion', { fa: fid, u: $('#ubin').value.trim() }, 'Ubicación guardada');
+};
+
+function renderMonth() {
+  const st = fa().paso_min, first = (new Date(y, m, 1).getDay() + 6) % 7, n = new Date(y, m + 1, 0).getDate(), h = hoy();
+  let html = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => `<div class="dow">${d}</div>`).join('');
+  html += '<div class="day nil"></div>'.repeat(first);
+  for (let d = 1; d <= n; d++) {
+    const date = iso(y, m, d), S = segs(date), used = S.filter(s => s.r).length;
+    const libre = S.filter(s => !s.r).reduce((t, s) => t + s.b - s.a, 0);
+    const cls = !used ? 'free' : libre < st ? 'full' : 'some';
+    const nom = S.filter(s => s.r).map(s => s.r.laboratorio);
+    const txt = used
+      ? nom.slice(0, 3).map(n => `<i>${esc(n)}</i>`).join('') + (used > 3 ? `<i class="m">+${used - 3} más</i>` : '')
+      : '<small>Libre</small>';
+    html += `<div class="day ${cls} ${date < h && !pin ? 'off' : ''} ${date === day ? 'sel' : ''}" data-d="${date}"><b>${d}</b>${txt}</div>`;
+  }
+  $('#month').innerHTML = html;
+}
+
+function renderDay() {
+  const el = $('#day'), past = day < hoy(), st = fa().paso_min;
+  el.hidden = false;
+  el.innerHTML = `<div class="bar"><button id="back">← Atrás</button><b>${day.split('-').reverse().join('/')}</b></div>` +
+    segs(day).map((s, i) => {
+      if (s.r) {
+        const r = s.r;
+        return `<div class="blk t"><div><b>${h12(s.a)} – ${h12(s.b)}</b><br>${esc(r.laboratorio)}${r.producto ? ' · ' + esc(r.producto) : ''}</div>
+          <div class="row">${pin ? `<button data-x="e${r.id}">Corregir</button><button data-x="r${r.id}">Borrar</button>` : miCod(kr(r))
+            ? `<button data-x="v${r.id}">Ver código</button><button data-x="e${r.id}">Corregir</button><button data-x="c${r.id}">Cancelar</button>`
+            : `<button data-x="k${r.id}">Tengo código</button>`}</div></div>`;
+      }
+      return `<div class="blk"><div><b>${h12(s.a)} – ${h12(s.b)}</b><br>Libre</div>${!past && s.b - s.a >= st ? `<button class="p" data-x="a${i}">Apartar</button>` : ''}</div>`;
+    }).join('');
+}
+
+async function limite() {
+  if (!pin) { lim = null; rol = null; return; }
+  const { data } = await sb.rpc('admin_limite', { p: pin });
+  lim = data || null; rol = lim ? lim.rol : null;
+}
+
+async function admin(fn, args, ok, apply) {
+  const { data, error } = await sb.rpc(fn, { p: pin, ...args });
+  if (error) { ui.alert(error.message, 'No se pudo completar'); if (/PIN/.test(error.message)) pin = null; }
+  else { if (apply) { apply(); render(); } if (ok) snack(ok); }
+  await load();
+  await limite(); render();
+  return error ? null : data;
+}
+
+async function labRpc(fn, args, k, apply, ok) {
+  const { error } = await sb.rpc(fn, args);
+  if (error) { ui.alert(error.message, 'No se pudo completar'); if (/Código/.test(error.message)) dropCod(k); }
+  else { if (apply) { apply(); render(); } if (ok) snack(ok); }
+  load();
+}
+
+// Apartar: el usuario elige "Desde" y "Hasta" solo dentro del hueco libre
+function openApartar(g) {
+  gap = g; ed = null; $('#dt').textContent = 'Apartar horario'; $('#hr').style.display = '';
+  const st = fa().paso_min, o = [];
+  for (let n = Math.ceil(g.a / st) * st; n + st <= g.b; n += st) o.push({ v: ts(n), t: h12(n) });
+  dd($('#t1'), o, o[0] && o[0].v, fillHasta, 'Desde'); fillHasta();
+  try { $('#lab').value = localStorage.getItem('lab') || ''; } catch { }
+  $('#prod').value = ''; $('#dlg').showModal();
+}
+function fillHasta() {
+  const st = fa().paso_min, a = mins($('#t1').dataset.v), o = [];
+  for (let n = a + st; n <= gap.b; n += st) o.push({ v: ts(n), t: h12(n) });
+  dd($('#t2'), o, ts(Math.min(a + 60, gap.b)), null, 'Hasta');
+}
+
+$('#month').onclick = e => {
+  const c = e.target.closest('.day');
+  if (!c || !c.dataset.d || (c.classList.contains('off') && !pin)) return;
+  day = c.dataset.d; render();
+};
+
+$('#day').onclick = async e => {
+  if (e.target.id === 'back') { day = null; render(); return; }
+  const x = e.target.dataset.x; if (!x) return;
+  const k = x[0], id = +x.slice(1), r = R.find(z => z.id === id);
+  if (k === 'a') openApartar(segs(day)[id]);
+  if (k === 'v' && r) ui.alert('Guárdalo para poder corregir o cancelar desde otro celular o navegador.', 'Tu código de reserva', miCod(kr(r)), compartir(fa().nombre, r.fecha, r.hora_inicio, r.hora_fin, r.laboratorio, r.producto, miCod(kr(r))));
+  if (k === 'e') {
+    if (!r) return;
+    const rr = R.filter(z => z.farmacia_id == fid && z.fecha == day).sort((a, b) => mins(a.hora_inicio) - mins(b.hora_inicio));
+    const ix = rr.findIndex(z => z.id === id), f = fa(), st = f.paso_min, o = [];
+    gap = { a: ix > 0 ? mins(rr[ix - 1].hora_fin) : mins(f.hora_apertura), b: ix < rr.length - 1 ? mins(rr[ix + 1].hora_inicio) : mins(f.hora_cierre) };
+    ed = id; $('#dt').textContent = 'Corregir reserva'; $('#hr').style.display = '';
+    for (let n = Math.ceil(gap.a / st) * st; n + st <= gap.b; n += st) o.push({ v: ts(n), t: h12(n) });
+    dd($('#t1'), o, hh(r.hora_inicio), fillHasta, 'Desde'); fillHasta();
+    setDD($('#t2'), hh(r.hora_fin), false);
+    $('#lab').value = r.laboratorio; $('#prod').value = r.producto || ''; $('#dlg').showModal();
+  }
+  if (k === 'c' && await ui.confirm('Se liberará ese horario.', '¿Cancelar tu reserva?', 'Sí, cancelar')) labRpc('lab_del_reserva', { c: miCod(kr(r)), i: id }, kr(r), () => { R = R.filter(z => z.id !== id); }, 'Reserva cancelada');
+  if (k === 'k') {
+    const c = ((await ui.prompt('Código de tu reserva')) || '').trim().toUpperCase();
+    if (c) { saveCod(kr(r), c); render(); }
+  }
+  if (k === 'r' && await ui.confirm('La reserva saldrá del calendario y quedará 90 días en la papelera.', '¿Borrar esta reserva?', 'Sí, borrar')) admin('admin_del_reserva', { i: id }, 'Reserva borrada', () => { R = R.filter(z => z.id !== id); });
+};
+
+$('#cfg').onclick = async e => {
+  if (e.target.id === 'cpa') { abrePapelera(); return; }
+  if (e.target.id === 'cnb') {
+    const n = $('#cn').value.trim();
+    if (n.length < 2) { ui.alert('El nombre debe tener al menos 2 caracteres.', 'Nombre inválido'); return; }
+    admin('admin_set_nombre', { fa: fid, n }, 'Nombre guardado'); return;
+  }
+  if (e.target.id === 'cad') {
+    const n = ((await ui.prompt('Nombre de la nueva farmacia')) || '').trim().slice(0, 60);
+    if (!n) return;
+    if (n.length < 2) { ui.alert('El nombre debe tener al menos 2 caracteres.', 'Nombre inválido'); return; }
+    const id = await admin('admin_add_farmacia', { n }, 'Farmacia agregada');
+    if (id) { fid = id; day = null; render(); }
+    return;
+  }
+  if (e.target.id === 'cdel') {
+    if (F.length < 2) { ui.alert('Debe quedar al menos una farmacia.', 'No se puede eliminar'); return; }
+    if (await ui.confirm(`Se borrará "${fa().nombre}" con todas sus reservas. Podrás restaurarla desde la papelera durante 90 días.`, '¿Eliminar farmacia?', 'Sí, eliminar')) {
+      await admin('admin_del_farmacia', { fa: fid }, 'Farmacia eliminada');
+    }
+    return;
+  }
+  if (e.target.id === 'cqs') {
+    const c = parseInt($('#cq').value, 10);
+    if (!Number.isInteger(c) || c < 1 || c > 999) { ui.alert('Escribe un número entre 1 y 999.', 'Máximo inválido'); return; }
+    admin('admin_set_limite', { c }, 'Máximo guardado');
+    return;
+  }
+  if (e.target.id !== 'cg') return;
+  const ab = $('#ca').dataset.v, ci = $('#cc').dataset.v;
+  if (ci <= ab) { ui.alert('La hora de cierre debe ser después de la de apertura.', 'Horario inválido'); return; }
+  admin('admin_set_horario', { fa: fid, ab, ci, st: +$('#cp').dataset.v }, 'Horario guardado');
+};
+
+$('#fm').onsubmit = async e => {
+  e.preventDefault();
+  const lab = $('#lab').value.trim(), prod = $('#prod').value.trim() || null;
+  if (ed) {
+    const id = ed, r = R.find(z => z.id === id), ni = $('#t1').dataset.v, nf = $('#t2').dataset.v; ed = null;
+    $('#dlg').close();
+    const k0 = kr(r), cod = miCod(k0), same = ni === hh(r.hora_inicio) && nf === hh(r.hora_fin);
+    const apply = () => {
+      r.laboratorio = lab; r.producto = prod;
+      if (same) return;
+      r.hora_inicio = ni + ':00'; r.hora_fin = nf + ':00';
+      const k1 = kr(r); if (cod && k1 !== k0) { saveCod(k1, cod); dropCod(k0); } // el código va ligado a la hora de inicio
+    };
+    const args = same ? { i: id, l: lab, pr: prod } : { i: id, ini: ni, fin: nf, l: lab, pr: prod };
+    if (pin) await admin(same ? 'admin_edit_reserva' : 'admin_edit_horario', args, 'Reserva corregida', apply);
+    else await labRpc(same ? 'lab_edit_reserva' : 'lab_edit_horario', { c: cod, ...args }, k0, apply, 'Reserva corregida');
+    return;
+  }
+  const i = $('#t1').dataset.v, f2 = $('#t2').dataset.v, c = newCod();
+  const { error } = await sb.rpc('apartar', { fa: fid, d: day, i, e: f2, l: lab, pr: prod, c });
+  $('#dlg').close();
+  if (error) ui.alert(error.message, 'No se pudo apartar');
+  else {
+    saveCod(key(fid, day, i), c);
+    R.push({ id: -1, farmacia_id: fid, fecha: day, hora_inicio: i, hora_fin: f2, laboratorio: lab, producto: prod });
+    render();
+    try { localStorage.setItem('lab', lab); } catch { }
+    ui.alert(`Reservado de ${h12(i)} a ${h12(f2)}.\nEste es tu código para corregir o cancelar. Guárdalo.`, '¡Reservado!', c, compartir(fa().nombre, day, i, f2, lab, prod, c));
+  }
+  load();
+};
+$('#cx').onclick = () => { ed = null; $('#dlg').close(); };
+$('#ayb').onclick = () => $('#ay').showModal();
+$('#ayx').onclick = () => $('#ay').close();
+
+$('#prev').onclick = () => { m--; if (m < 0) { m = 11; y--; } day = null; load(); };
+$('#next').onclick = () => { m++; if (m > 11) { m = 0; y++; } day = null; load(); };
+
+$('#adm').onclick = async () => {
+  if (pin) { pin = null; rol = null; lim = null; el_reset(); render(); return; }
+  const p = await ui.prompt('PIN de administrador', 'password');
+  if (!p) return;
+  const { data, error } = await sb.rpc('admin_ok', { p });
+  if (data === true) { pin = p; await limite(); render(); }
+  else if (error) ui.alert(error.message, 'Acceso bloqueado');
+  else ui.alert('Intenta de nuevo.', 'PIN incorrecto');
+};
+
+// Papelera (solo admin): lo borrado se conserva 90 días y luego se destruye solo
+async function abrePapelera() {
+  const { data, error } = await sb.rpc('admin_papelera', { p: pin });
+  if (error) { ui.alert(error.message, 'No se pudo abrir la papelera'); if (/PIN/.test(error.message)) { pin = null; render(); } return; }
+  pintaPapelera(data);
+  if (!$('#pp').open) $('#pp').showModal();
+}
+function pintaPapelera(items) {
+  const quedan = t => Math.max(0, 90 - Math.floor((Date.now() - new Date(t)) / 864e5));
+  $('#pl').innerHTML = items.length ? items.map(t => {
+    const d = t.datos, esF = t.tipo === 'farmacia', n = quedan(t.borrado_en);
+    const titulo = esF ? `Farmacia: ${d.nombre}` : d.laboratorio + (d.producto ? ' · ' + d.producto : '');
+    const detalle = esF
+      ? `${t.n_reservas} reserva${t.n_reservas === 1 ? '' : 's'}`
+      : `${t.farmacia || 'Farmacia eliminada'} · ${fechaTxt(d.fecha)} · ${h12(d.hora_inicio)} – ${h12(d.hora_fin)}`;
+    return `<div class="blk t"><div><b>${esc(titulo)}</b><br>${esc(detalle)}<br><small>Borrado el ${new Date(t.borrado_en).toLocaleDateString('es')} por ${t.por === 'admin' ? 'el admin' : 'el laboratorio'} · se elimina en ${n} día${n === 1 ? '' : 's'}</small></div><button data-r="${t.id}">Restaurar</button></div>`;
+  }).join('') : '<p>La papelera está vacía.</p>';
+  $('#pv').disabled = !items.length;
+}
+$('#pl').onclick = async e => {
+  const id = e.target.dataset.r; if (!id) return;
+  const { error } = await sb.rpc('admin_restaurar', { p: pin, i: +id });
+  if (error) { ui.alert(error.message, 'No se pudo restaurar'); return; }
+  snack('Restaurado'); load(); await limite(); render(); abrePapelera();
+};
+$('#pv').onclick = async () => {
+  if (!await ui.confirm('Se borrará todo lo que hay en la papelera. No se puede deshacer.', '¿Vaciar la papelera?', 'Sí, vaciar')) return;
+  const { error } = await sb.rpc('admin_vaciar_papelera', { p: pin });
+  if (error) { ui.alert(error.message, 'No se pudo vaciar'); return; }
+  snack('Papelera vaciada'); abrePapelera();
+};
+$('#px').onclick = () => $('#pp').close();
+
+// Las librerías del PDF se descargan solo la primera vez que se pide un PDF
+const loadJs = src => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+let pdfLibs;
+const needPdf = () => pdfLibs ||= loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+  .then(() => loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'))
+  .catch(e => { pdfLibs = null; throw e; });
+
+async function pdf(all) {
+  if (!pin) return;
+  try { await needPdf(); } catch { ui.alert('Revisa tu conexión e intenta de nuevo.', 'No se pudo preparar el PDF'); return; }
+  const doc = new jspdf.jsPDF();
+  const list = all ? F : F.filter(f => f.id == fid), n = new Date(y, m + 1, 0).getDate();
+  list.forEach((f, k) => {
+    if (k) doc.addPage();
+    doc.setFontSize(15); doc.setTextColor(21, 101, 168);
+    doc.text(`${f.nombre} · Días de producto · ${MESES[m]} ${y}`, 14, 14);
+    doc.setFontSize(9); doc.setTextColor(90);
+    doc.text(`Horario de atención: ${h12(f.hora_apertura)} a ${h12(f.hora_cierre)}`, 14, 19);
+    const body = [];
+    for (let d = 1; d <= n; d++) {
+      const date = iso(y, m, d), w = `${DIAS[new Date(y, m, d).getDay()]} ${d}`;
+      const rr = R.filter(r => r.farmacia_id == f.id && r.fecha == date).sort((a, b) => mins(a.hora_inicio) - mins(b.hora_inicio));
+      if (!rr.length) body.push([w, 'Disponible todo el día', '', '']);
+      else rr.forEach((r, j) => body.push([j ? '' : w, h12(r.hora_inicio) + ' - ' + h12(r.hora_fin), r.laboratorio, r.producto || '']));
+    }
+    doc.autoTable({
+      startY: 23, theme: 'grid', styles: { fontSize: 8, cellPadding: 1.5 },
+      head: [['Día', 'Horario', 'Laboratorio', 'Producto']], body,
+      headStyles: { fillColor: [21, 101, 168] },
+      didParseCell: h => { if (h.section === 'body' && h.cell.raw === 'Disponible todo el día') h.cell.styles.textColor = [150, 150, 150]; }
+    });
+  });
+  doc.save(`Calendario_${MESES[m]}_${y}${all ? '_todas' : ''}.pdf`);
+}
+$('#pdf1').onclick = () => pdf(false);
+$('#pdfA').onclick = () => pdf(true);
+
+load();
+
+// Actualización automática de la página: si el archivo publicado cambió, se recarga sola
+let lastChk = 0;
+async function checkVersion() {
+  if (Date.now() - lastChk < 60000) return;
+  lastChk = Date.now();
+  try {
+    const r = await fetch(location.pathname, { cache: 'reload' });
+    if (!r.ok) return;
+    const tx = await r.text();
+    let h = 5381; for (let i = 0; i < tx.length; i++) h = ((h * 33) ^ tx.charCodeAt(i)) >>> 0;
+    const old = localStorage.getItem('ver');
+    if (old && old !== String(h)) {
+      if (document.querySelector('dialog[open]')) return; // no interrumpir si hay una ventana abierta
+      localStorage.setItem('ver', h); location.reload();
+    } else localStorage.setItem('ver', h);
+  } catch { }
+}
+
+let t;
+const reload = () => { clearTimeout(t); t = setTimeout(() => load(true), 300); };
+sb.channel('calendario-live')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, p => { console.log('evento', p); reload(); })
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'farmacias' }, p => { console.log('evento', p); reload(); })
+  .subscribe((status, err) => console.log('realtime:', status, err));
+// Respaldo para celulares: recargar cada 30 s mientras la página está visible,
+// y al volver a la pestaña, recuperar internet o salir del modo de espera
+setInterval(() => { if (!document.hidden) { reload(); checkVersion(); } }, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { reload(); checkVersion(); } });
+addEventListener('focus', reload);
+addEventListener('online', reload);
+addEventListener('pageshow', e => { if (e.persisted) reload(); });
+checkVersion();
+</script>
+</body>
+</html>
