@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin · Días producto</title>
+<style>
+:root{--r:#1565a8;--rd:#0b3d7a;--g:#5fae2e;--ink:#222;--ln:#d6e0ea;--warn:#e6f0fa}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.4 system-ui,sans-serif;color:var(--ink);background:#fff}
+header{background:linear-gradient(90deg,var(--rd),var(--r));border-bottom:4px solid var(--g);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1{font-size:18px;margin:0}
+main{max-width:900px;margin:0 auto;padding:16px}
+button,input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--ln)}
+button{cursor:pointer;background:#fff;color:var(--r);border-color:var(--r);font-weight:600}
+button.p{background:var(--r);color:#fff}
+button.d{background:var(--rd);color:#fff;border-color:var(--rd)}
+header button{border-color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.card{border:1px solid var(--ln);border-left:5px solid var(--g);border-radius:8px;padding:12px;margin:10px 0}
+.card.off{border-left-color:#999;opacity:.8}
+.card h3{margin:0 0 4px}
+.card small{color:#666}
+.new{background:var(--warn);border:1px solid var(--ln);border-radius:8px;padding:12px;margin-bottom:16px}
+.fld{display:flex;flex-direction:column;gap:2px;font-size:13px}
+dialog{border:0;border-radius:12px;padding:16px;width:380px;max-width:92vw}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+#pinv{font:700 26px/1 ui-monospace,monospace;letter-spacing:.2em;background:var(--warn);border:1px dashed var(--r);border-radius:10px;padding:14px;margin:10px 0;text-align:center;color:var(--rd);user-select:all}
+#sn{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#2b2b2b;color:#fff;padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s}
+#sn.on{opacity:1}
+</style>
+</head>
+<body>
+<header><h1>Admin · Días producto</h1><button id="out" hidden>Salir</button></header>
+<main>
+  <form id="lg" class="new">
+    <div class="fld"><label for="sp">PIN de superadmin</label><input id="sp" type="password" autocomplete="off" required></div>
+    <div class="row" style="margin-top:8px"><button class="p">Entrar</button></div>
+  </form>
+  <div id="app" hidden>
+    <form id="nf" class="new">
+      <b>Crear cliente</b>
+      <div class="row" style="margin-top:8px">
+        <div class="fld"><label for="ns">Slug (a-z, 0-9, guiones)</label><input id="ns" required minlength="2" maxlength="31" pattern="[a-z0-9\-]+"></div>
+        <div class="fld"><label for="nn">Nombre</label><input id="nn" required minlength="2" maxlength="60"></div>
+        <div class="fld"><label for="nc">Sucursales máx.</label><input id="nc" type="number" min="1" max="999" value="5" style="width:90px"></div>
+        <button class="p" style="align-self:flex-end">Crear</button>
+      </div>
+    </form>
+    <div id="ls"></div>
+  </div>
+</main>
+
+<dialog id="dg">
+  <h3 style="margin:0 0 6px;color:var(--rd)" id="dgt"></h3>
+  <p style="margin:0">Se muestra una sola vez. Cópialo y entrégalo al cliente.</p>
+  <div id="pinv"></div>
+  <div class="row" style="justify-content:center"><button id="cp">Copiar</button><button class="p" id="dgx">Listo</button></div>
+</dialog>
+<div id="sn" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const sb = supabase.createClient('https://vmseqwogmuiyqtjgzctt.supabase.co', 'sb_publishable_uZITUaJiJUAZKQVBzGnusw_VMFp72b2');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let tok = null, L = [];
+const vencida = m => /sesi|venc/i.test(m || '');
+let snT; const snack = t => { const e = $('#sn'); e.textContent = t; e.classList.add('on'); clearTimeout(snT); snT = setTimeout(() => e.classList.remove('on'), 2800); };
+
+function vista() {
+  $('#lg').hidden = !!tok; $('#app').hidden = !tok; $('#out').hidden = !tok;
+  if (tok) pinta();
+}
+function pinta() {
+  $('#ls').innerHTML = L.map(c => `<div class="card ${c.activa ? '' : 'off'}" data-i="${c.id}">
+    <h3>${esc(c.nombre)} <small>· <a href="/${esc(c.slug)}/" target="_blank" rel="noopener">/${esc(c.slug)}</a></small></h3>
+    <small>${c.sucursales} sucursal(es) · ${c.reservas} reserva(s) · creada ${new Date(c.creada_en).toLocaleDateString('es')}</small>
+    <div class="row" style="margin-top:8px">
+      <label><input type="checkbox" class="ac" ${c.activa ? 'checked' : ''}> Activa</label>
+      <label>Máx. sucursales <input type="number" class="cu" min="1" max="999" value="${c.cuota}" style="width:80px"></label>
+      <button class="p gs">Guardar</button><button class="rp">Resetear PIN</button>
+    </div></div>`).join('') || '<p>No hay clientes.</p>';
+}
+async function rpc(fn, args) {
+  const { data, error } = await sb.rpc(fn, { tok, ...args });
+  if (error) {
+    alert(error.message);
+    if (vencida(error.message)) { tok = null; vista(); }
+    return { error };
+  }
+  return { data };
+}
+async function carga() { const r = await rpc('v2_super_listar', {}); if (r.data) { L = r.data; vista(); } }
+function muestraPin(t, pin) { $('#dgt').textContent = t; $('#pinv').textContent = pin; $('#dg').showModal(); }
+
+$('#lg').onsubmit = async e => {
+  e.preventDefault();
+  const { data, error } = await sb.rpc('v2_super_login', { p: $('#sp').value });
+  $('#sp').value = '';
+  if (error) { alert(error.message); return; }
+  if (!data || !data.ok) { alert((data && data.error) || 'No se pudo entrar'); return; }
+  tok = data.token; await carga();
+};
+$('#out').onclick = () => { const t = tok; tok = null; L = []; vista(); sb.rpc('v2_super_logout', { tok: t }).then(() => {}, () => {}); };
+
+$('#nf').onsubmit = async e => {
+  e.preventDefault();
+  const r = await rpc('v2_super_crear_cadena', { s: $('#ns').value, n: $('#nn').value, c: +$('#nc').value });
+  if (!r.data) return;
+  $('#nf').reset(); $('#nc').value = 5;
+  muestraPin('PIN de ' + r.data.slug, r.data.pin);
+  carga();
+};
+$('#ls').onclick = async e => {
+  const card = e.target.closest('.card'); if (!card) return;
+  const i = +card.dataset.i, c = L.find(x => x.id === i);
+  if (e.target.classList.contains('gs')) {
+    const cu = parseInt(card.querySelector('.cu').value, 10);
+    if (!Number.isInteger(cu) || cu < 1 || cu > 999) { alert('Escribe un número entre 1 y 999.'); return; }
+    const r = await rpc('v2_super_set_cadena', { i, a: card.querySelector('.ac').checked, c: cu });
+    if (!r.error) { snack('Guardado'); carga(); }
+  }
+  if (e.target.classList.contains('rp')) {
+    if (!confirm(`Se creará un PIN nuevo para "${c.nombre}" y el actual dejará de funcionar. ¿Seguir?`)) return;
+    const r = await rpc('v2_super_reset_pin', { i });
+    if (r.data) muestraPin('Nuevo PIN de ' + c.slug, r.data);
+  }
+};
+$('#cp').onclick = async () => { try { await navigator.clipboard.writeText($('#pinv').textContent); $('#cp').textContent = '¡Copiado!'; } catch { } };
+$('#dgx').onclick = () => { $('#dg').close(); $('#pinv').textContent = ''; $('#cp').textContent = 'Copiar'; };
+</script>
+</body>
+</html>
