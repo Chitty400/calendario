@@ -528,7 +528,7 @@ $('#fm').onsubmit = async e => {
     };
     const args = same ? { i: id, l: lab, pr: prod } : { i: id, ini: ni, fin: nf, l: lab, pr: prod };
     if (tok) await admin(same ? 'v2_edit_reserva' : 'v2_edit_horario', args, 'Reserva corregida', apply);
-    else await labRpc(same ? 'lab_edit_reserva' : 'lab_edit_horario', { c: cod, ...args }, k0, apply, 'Reserva corregida');
+    else await labRpc(same ? 'v2_lab_edit_reserva' : 'v2_lab_edit_horario', { c: cod, ...args }, k0, apply, 'Reserva corregida');
     return;
   }
   const i = $('#t1').dataset.v, f2 = $('#t2').dataset.v, c = newCod();
