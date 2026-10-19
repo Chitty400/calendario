@@ -190,6 +190,16 @@ if (!/^[a-z0-9-]+$/.test(SLUG) || SLUG === 'index') {
   im.onload = () => { let l = document.querySelector('link[rel=icon]'); if (!l) { l = document.createElement('link'); l.rel = 'icon'; document.head.appendChild(l); } l.href = im.src; };
   im.src = '/' + SLUG + '.png';
 }
+// Colores por cliente: a partir de un color principal y uno de acento se calculan los demás tonos
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mezcla = (h, to, t) => '#' + hexRgb(h).map(c => Math.round(c + (to - c) * t).toString(16).padStart(2, '0')).join('');
+function tema(p, a) {
+  const st = document.documentElement.style, ok = /^#[0-9a-f]{6}$/i;
+  const fija = (vars, c, fn) => vars.forEach((v, i) => c ? st.setProperty(v, fn[i](c)) : st.removeProperty(v));
+  fija(['--r', '--rd', '--warn', '--full'], ok.test(p) && p, [c => c, c => mezcla(c, 0, .4), c => mezcla(c, 255, .9), c => mezcla(c, 255, .7)]);
+  fija(['--g', '--ok', '--okt'], ok.test(a) && a, [c => c, c => mezcla(c, 255, .85), c => mezcla(c, 0, .13)]);
+}
+try { const t = JSON.parse(localStorage.getItem(SLUG + ':tema') || 'null'); if (t) tema(t[0], t[1]); } catch { } // evita el parpadeo de colores al abrir
 let P = SLUG + ':'; // prefijo de localStorage; al cargar pasa a ser el id de la cadena, para que cambiar el slug no borre nada
 let NOM = '';
 const vencida = m => /sesi|venc/i.test(m || '');
@@ -336,6 +346,8 @@ async function load(quiet) {
     return;
   }
   if (a.data.id != null) P = 'c' + a.data.id + ':';
+  tema(a.data.color_principal, a.data.color_acento);
+  try { localStorage.setItem(SLUG + ':tema', JSON.stringify([a.data.color_principal || null, a.data.color_acento || null])); } catch { }
   NOM = a.data.nombre || NOM; document.title = 'Días producto · ' + NOM; $('#ttl').textContent = 'Días producto · ' + NOM;
   F = [...a.data.farmacias].sort((p, q) => p.id - q.id); R = c.data || [];
   if (fid == null) { try { fid = +localStorage.getItem(P+'fid') || null; } catch { } }
@@ -621,7 +633,8 @@ async function pdf(all) {
   list.forEach((f, k) => {
     if (k) doc.addPage();
     const tit = (NOM && NOM.trim().toLowerCase() !== f.nombre.trim().toLowerCase() ? NOM + ' · ' : '') + `${f.nombre} · Días de producto · ${MESES[m]} ${y}`;
-    doc.setFontSize(15); doc.setTextColor(21, 101, 168);
+    const rgb = hexRgb(getComputedStyle(document.documentElement).getPropertyValue('--r').trim());
+    doc.setFontSize(15); doc.setTextColor(...rgb);
     if (doc.getTextWidth(tit) > 182) doc.setFontSize(11); // nombres largos: letra más chica para que quepa en una línea
     doc.text(tit, 14, 14);
     doc.setFontSize(9); doc.setTextColor(90);
@@ -636,7 +649,7 @@ async function pdf(all) {
     doc.autoTable({
       startY: 23, theme: 'grid', styles: { fontSize: 8, cellPadding: 1.5 },
       head: [['Día', 'Horario', 'Laboratorio', 'Producto']], body,
-      headStyles: { fillColor: [21, 101, 168] },
+      headStyles: { fillColor: rgb },
       didParseCell: h => { if (h.section === 'body' && h.cell.raw === 'Disponible todo el día') h.cell.styles.textColor = [150, 150, 150]; }
     });
   });
