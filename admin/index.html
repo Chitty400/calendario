@@ -59,6 +59,13 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
   <div id="pinv"></div>
   <div class="row" style="justify-content:center"><button id="cp">Copiar</button><button class="p" id="dgx">Listo</button></div>
 </dialog>
+<dialog id="de">
+  <h3 style="margin:0 0 8px;color:var(--rd)">Editar cliente</h3>
+  <div class="fld"><label for="es">Slug</label><input id="es" minlength="2" maxlength="31" pattern="[a-z0-9\-]+"></div>
+  <div class="fld" style="margin-top:8px"><label for="en2">Nombre</label><input id="en2" minlength="2" maxlength="60"></div>
+  <p style="font-size:13px;color:#666;margin:8px 0 0">Si cambias el slug, la dirección vieja deja de funcionar y los laboratorios pierden los códigos guardados en su navegador (tendrán que usar "Tengo código").</p>
+  <div class="row" style="margin-top:10px"><button class="p" id="eg">Guardar</button><button id="ec">Cancelar</button></div>
+</dialog>
 <dialog id="dp">
   <h3 style="margin:0 0 6px;color:var(--rd)" id="dpt"></h3>
   <p style="margin:0 0 8px">Escribe el PIN nuevo (mínimo 8 caracteres). El anterior deja de funcionar.</p>
@@ -72,7 +79,7 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 const sb = supabase.createClient('https://vmseqwogmuiyqtjgzctt.supabase.co', 'sb_publishable_uZITUaJiJUAZKQVBzGnusw_VMFp72b2');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let tok = null, L = [], pinId = null;
+let tok = null, L = [], pinId = null, editId = null;
 const vencida = m => /sesi|venc/i.test(m || '');
 let snT; const snack = t => { const e = $('#sn'); e.textContent = t; e.classList.add('on'); clearTimeout(snT); snT = setTimeout(() => e.classList.remove('on'), 2800); };
 
@@ -87,7 +94,7 @@ function pinta() {
     <div class="row" style="margin-top:8px">
       <label><input type="checkbox" class="ac" ${c.activa ? 'checked' : ''}> Activa</label>
       <label>Máx. sucursales <input type="number" class="cu" min="1" max="999" value="${c.cuota}" style="width:80px"></label>
-      <button class="p gs">Guardar</button><button class="cpn">Cambiar PIN</button><button class="en">Entrar como admin</button>
+      <button class="p gs">Guardar</button><button class="ed">Editar nombre/slug</button><button class="cpn">Cambiar PIN</button><button class="en">Entrar como admin</button>
     </div></div>`).join('') || '<p>No hay clientes.</p>';
 }
 async function rpc(fn, args) {
@@ -129,6 +136,7 @@ $('#ls').onclick = async e => {
     const r = await rpc('v2_super_set_cadena', { i, a: card.querySelector('.ac').checked, c: cu });
     if (!r.error) { snack('Guardado'); carga(); }
   }
+  if (e.target.classList.contains('ed')) { editId = i; $('#es').value = c.slug; $('#en2').value = c.nombre; $('#de').showModal(); }
   if (e.target.classList.contains('cpn')) { pinId = i; $('#dpt').textContent = 'Cambiar PIN de ' + c.slug; $('#pn').value = ''; $('#dp').showModal(); }
   if (e.target.classList.contains('en')) {
     const w = window.open('', '_blank'); // se abre antes del await para que no lo bloquee el navegador
@@ -137,6 +145,15 @@ $('#ls').onclick = async e => {
   }
 };
 $('#cp').onclick = async () => { try { await navigator.clipboard.writeText($('#pinv').textContent); $('#cp').textContent = '¡Copiado!'; } catch { } };
+$('#ec').onclick = () => $('#de').close();
+$('#eg').onclick = async () => {
+  const c = L.find(x => x.id === editId), sl = $('#es').value.trim().toLowerCase(), nm = $('#en2').value.trim();
+  if (!/^[a-z0-9-]{2,31}$/.test(sl)) { alert('Slug inválido (a-z, 0-9 y guiones, 2 a 31 caracteres).'); return; }
+  if (nm.length < 2) { alert('El nombre debe tener al menos 2 caracteres.'); return; }
+  if (sl !== c.slug && !confirm(`La dirección /${c.slug} dejará de funcionar y pasará a /${sl}. ¿Seguir?`)) return;
+  const r = await rpc('v2_super_edit_cadena', { i: editId, s: sl, n: nm });
+  if (!r.error) { $('#de').close(); snack('Guardado'); carga(); }
+};
 const gen = () => { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return [...crypto.getRandomValues(new Uint8Array(10))].map(x => a[x % a.length]).join(''); };
 $('#pg').onclick = () => { $('#pn').value = gen(); };
 $('#pc').onclick = () => $('#dp').close();
