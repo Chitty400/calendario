@@ -631,6 +631,12 @@ async function pdf(all) {
 $('#pdf1').onclick = () => pdf(false);
 $('#pdfA').onclick = () => pdf(true);
 
+// Entrada del superadmin desde /admin: /slug/#t=TOKEN (el token no viaja al servidor ni queda en la barra)
+if (/^#t=[0-9a-f]{64}$/.test(location.hash)) {
+  tok = location.hash.slice(3);
+  history.replaceState(null, '', location.pathname + location.search);
+  limite().then(() => { if (F.length) render(); });
+}
 load();
 
 // Actualización automática de la página: si el archivo publicado cambió, se recarga sola
