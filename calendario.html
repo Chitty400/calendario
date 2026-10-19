@@ -185,7 +185,7 @@ if (!/^[a-z0-9-]+$/.test(SLUG) || SLUG === 'index') {
   document.body.innerHTML = '<p style="padding:24px;font:16px system-ui">No se encontró la cadena en la dirección.</p>';
   throw new Error('sin slug');
 }
-const P = SLUG + ':'; // prefijo de localStorage por cadena
+let P = SLUG + ':'; // prefijo de localStorage; al cargar pasa a ser el id de la cadena, para que cambiar el slug no borre nada
 let NOM = '';
 const vencida = m => /sesi|venc/i.test(m || '');
 
@@ -304,10 +304,10 @@ function segs(date) {
 // Código para corregir o cancelar la propia reserva
 const key = (f, d, h) => `${f}|${d}|${hh(h)}`;
 const kr = r => key(r.farmacia_id, r.fecha, r.hora_inicio);
-const CK = P + 'cods';
-const cods = () => { try { return JSON.parse(localStorage.getItem(CK) || '{}'); } catch { return {}; } };
-const saveCod = (k, c) => { try { const o = cods(); o[k] = c; localStorage.setItem(CK, JSON.stringify(o)); } catch { } };
-const dropCod = k => { try { const o = cods(); delete o[k]; localStorage.setItem(CK, JSON.stringify(o)); } catch { } };
+const CK = () => P + 'cods';
+const cods = () => { try { return JSON.parse(localStorage.getItem(CK()) || '{}'); } catch { return {}; } };
+const saveCod = (k, c) => { try { const o = cods(); o[k] = c; localStorage.setItem(CK(), JSON.stringify(o)); } catch { } };
+const dropCod = k => { try { const o = cods(); delete o[k]; localStorage.setItem(CK(), JSON.stringify(o)); } catch { } };
 const miCod = k => cods()[k];
 const newCod = () => {
   const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', v = crypto.getRandomValues(new Uint8Array(6));
@@ -330,6 +330,7 @@ async function load(quiet) {
     }
     return;
   }
+  if (a.data.id != null) P = 'c' + a.data.id + ':';
   NOM = a.data.nombre || NOM; document.title = 'Días producto · ' + NOM; $('#ttl').textContent = 'Días producto · ' + NOM;
   F = [...a.data.farmacias].sort((p, q) => p.id - q.id); R = c.data || [];
   if (fid == null) { try { fid = +localStorage.getItem(P+'fid') || null; } catch { } }
@@ -655,11 +656,11 @@ async function checkVersion() {
     if (!r.ok) return;
     const tx = await r.text();
     let h = 5381; for (let i = 0; i < tx.length; i++) h = ((h * 33) ^ tx.charCodeAt(i)) >>> 0;
-    const old = localStorage.getItem(P+'ver');
+    const old = localStorage.getItem('ver');
     if (old && old !== String(h)) {
       if (document.querySelector('dialog[open]')) return; // no interrumpir si hay una ventana abierta
-      localStorage.setItem(P+'ver', h); location.reload();
-    } else localStorage.setItem(P+'ver', h);
+      localStorage.setItem('ver', h); location.reload();
+    } else localStorage.setItem('ver', h);
   } catch { }
 }
 
