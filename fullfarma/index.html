@@ -558,7 +558,7 @@ $('#adm').onclick = async () => {
   const { data, error } = await sb.rpc('v2_login', { s: SLUG, p });
   if (error) ui.alert(error.message, 'Acceso bloqueado');
   else if (data && data.ok && data.token) { tok = data.token; await limite(); render(); }
-  else ui.alert('Intenta de nuevo.', 'PIN incorrecto');
+  else ui.alert((data && data.error) || 'Intenta de nuevo.', 'No se pudo entrar');
 };
 
 // Papelera (solo admin): lo borrado se conserva 90 días y luego se destruye solo
