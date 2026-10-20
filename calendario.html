@@ -339,7 +339,7 @@ const newCod = () => {
   return [...v].map(x => a[x % a.length]).join('');
 };
 
-let loadSeq = 0;
+let loadSeq = 0, cargada = false; // cargada: ya se mostró bien al menos una vez
 async function load(quiet) {
   const seq = ++loadSeq; // si salen varias cargas a la vez, solo vale la más reciente
   const ini = iso(y, m, 1), fin = m === 11 ? iso(y + 1, 0, 1) : iso(y, m + 1, 1);
@@ -348,6 +348,8 @@ async function load(quiet) {
     sb.rpc('cadena_reservas', { s: SLUG, d1: ini, d2: fin })
   ]);
   if (seq !== loadSeq) return;
+  // La cadena fue desactivada o cambió de dirección mientras la página estaba abierta: recargar para mostrar el aviso
+  if (quiet && cargada && !a.error && !c.error && !a.data) { location.reload(); return; }
   if (a.error || c.error || !a.data || !Array.isArray(a.data.farmacias)) {
     if (!quiet) {
       if (!a.error && !c.error) ui.alert('Revisa la dirección. Esta cadena no existe o está desactivada.', 'Cadena no encontrada');
@@ -362,6 +364,7 @@ async function load(quiet) {
   F = [...a.data.farmacias].sort((p, q) => p.id - q.id); R = c.data || [];
   if (fid == null) { try { fid = +localStorage.getItem(P+'fid') || null; } catch { } }
   if (!F.some(f => f.id == fid)) { fid = F[0]?.id; day = null; }
+  cargada = true;
   render();
 }
 
@@ -715,7 +718,11 @@ const reload = () => { clearTimeout(t); t = setTimeout(() => load(true), 300); }
 // Tiempo real por Broadcast: cada cadena escucha solo su canal 'cal:<slug>'.
 // La base de datos (triggers) envía un aviso vacío 'cambio' y aquí se recarga con load().
 sb.channel('cal:' + SLUG)
-  .on('broadcast', { event: 'cambio' }, () => reload())
+  .on('broadcast', { event: 'cambio' }, m => {
+    const s = m && m.payload && m.payload.slug; // si el slug cambió, el aviso trae la dirección nueva
+    if (s && s !== SLUG) { location.replace('/' + s + '/'); return; }
+    reload();
+  })
   .subscribe((status, err) => console.log('realtime:', status, err));
 // Respaldo para celulares: recargar cada 30 s mientras la página está visible,
 // y al volver a la pestaña, recuperar internet o salir del modo de espera
