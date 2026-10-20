@@ -98,10 +98,13 @@ dialog input{width:100%;margin:6px 0}
 #pl p{text-align:center;color:#666}
 #sn{position:fixed;left:50%;bottom:20px;z-index:50;max-width:90vw;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#2b2b2b;color:#fff;padding:10px 18px;border-radius:10px;border-left:5px solid var(--okt);box-shadow:0 8px 24px rgba(0,0,0,.3);transition:opacity .2s,transform .2s}
 #sn.on{opacity:1;transform:translate(-50%,0)}
+#off{position:sticky;top:0;z-index:60;background:#b3261e;color:#fff;text-align:center;padding:8px 12px;font-weight:600}
+#off[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){.dd>button::after,#sn{transition:none}}
 </style>
 </head>
 <body>
+<div id="off" role="alert" hidden>Sin conexión: no se pueden apartar ni corregir horarios hasta que vuelva internet.</div>
 <header>
   <h1 id="ttl">Días producto</h1>
   <div class="row">
@@ -205,6 +208,13 @@ let NOM = '';
 const vencida = m => /sesi|venc/i.test(m || '');
 
 const $ = s => document.querySelector(s);
+// Fallos de red (modo avión, sin señal, tiempo agotado) vs. errores que responde el servidor
+const esRed = e => !navigator.onLine || /failed to fetch|load failed|network|fetch|timeout|timed out|abort/i.test((e && e.message) || '');
+const MSG_RED = 'No hay conexión a internet (¿modo avión o sin señal?). Revisa tu conexión e intenta de nuevo.';
+const errMsg = e => esRed(e) ? MSG_RED : e.message;
+const tit = (e, t) => esRed(e) ? 'Sin conexión' : t;
+const tmo = ms => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+let intento = {}; // código de la reserva en curso: si reintenta lo mismo, se reusa
 const el_reset = () => { const c = $('#cfg'); if (c) c.dataset.sg = ''; };
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -448,8 +458,9 @@ async function limite() {
 }
 
 async function admin(fn, args, ok, apply) {
+  if (!navigator.onLine) { ui.alert(MSG_RED + '\nNo se guardó ningún cambio.', 'Sin conexión'); return null; }
   const { data, error } = await sb.rpc(fn, { tok, ...args });
-  if (error) { ui.alert(error.message, 'No se pudo completar'); if (vencida(error.message)) tok = null; }
+  if (error) { ui.alert(errMsg(error), tit(error, 'No se pudo completar')); if (vencida(error.message)) tok = null; }
   else { if (apply) { apply(); render(); } if (ok) snack(ok); }
   await load();
   await limite(); render();
@@ -457,8 +468,9 @@ async function admin(fn, args, ok, apply) {
 }
 
 async function labRpc(fn, args, k, apply, ok) {
+  if (!navigator.onLine) { ui.alert(MSG_RED + '\nNo se guardó ningún cambio.', 'Sin conexión'); return; }
   const { error } = await sb.rpc(fn, args);
-  if (error) { ui.alert(error.message, 'No se pudo completar'); if (/Código/.test(error.message)) dropCod(k); }
+  if (error) { ui.alert(errMsg(error), tit(error, 'No se pudo completar')); if (!esRed(error) && /Código/.test(error.message)) dropCod(k); }
   else { if (apply) { apply(); render(); } if (ok) snack(ok); }
   load();
 }
@@ -540,6 +552,8 @@ $('#cfg').onclick = async e => {
 $('#fm').onsubmit = async e => {
   e.preventDefault();
   const lab = $('#lab').value.trim(), prod = $('#prod').value.trim() || null;
+  // Sin internet: se avisa y el formulario se queda abierto con lo que escribió
+  if (!navigator.onLine) { ui.alert('Sin conexión: tu reserva NO se guardó.\nDesactiva el modo avión o conéctate a Wi-Fi o datos, y vuelve a tocar "' + ($('#fm button.p').textContent || 'Guardar') + '". Tus datos siguen aquí.', 'Sin conexión'); return; }
   if (ed) {
     const id = ed, r = R.find(z => z.id === id), ni = $('#t1').dataset.v, nf = $('#t2').dataset.v; ed = null;
     $('#dlg').close();
@@ -555,10 +569,22 @@ $('#fm').onsubmit = async e => {
     else await labRpc(same ? 'v2_lab_edit_reserva' : 'v2_lab_edit_horario', { c: cod, ...args }, k0, apply, 'Reserva corregida');
     return;
   }
-  const i = $('#t1').dataset.v, f2 = $('#t2').dataset.v, c = newCod();
-  const { error } = await sb.rpc('v2_apartar', { s: SLUG, fa: fid, d: day, i, e: f2, l: lab, pr: prod, c });
+  const i = $('#t1').dataset.v, f2 = $('#t2').dataset.v;
+  const sig = [fid, day, i, f2, lab, prod].join('|');
+  if (intento.sig !== sig) intento = { sig, c: newCod() }; // si reintenta lo mismo, se reusa el código
+  const c = intento.c;
+  const { error } = await sb.rpc('v2_apartar', { s: SLUG, fa: fid, d: day, i, e: f2, l: lab, pr: prod, c }).abortSignal(tmo(15000));
+  if (error && esRed(error)) {
+    // La red falló a medias: puede que la reserva sí llegara. No se cierra el formulario y se recarga al volver la señal.
+    ui.alert(navigator.onLine
+      ? 'La conexión falló y no pudimos confirmar tu reserva. Es posible que no se haya guardado.\nRevisa tu señal y vuelve a tocar "Apartar". Tus datos siguen aquí.'
+      : 'Sin conexión: tu reserva NO se guardó.\nVuelve a tocar "Apartar" cuando tengas internet. Tus datos siguen aquí.', 'Reserva NO confirmada');
+    reload();
+    return;
+  }
+  intento = {};
   $('#dlg').close();
-  if (error) ui.alert(error.message, 'No se pudo apartar');
+  if (error) ui.alert(errMsg(error), tit(error, 'No se pudo apartar'));
   else {
     saveCod(key(fid, day, i), c);
     R.push({ id: -1, farmacia_id: fid, fecha: day, hora_inicio: i, hora_fin: f2, laboratorio: lab, producto: prod });
@@ -580,7 +606,7 @@ $('#adm').onclick = async () => {
   const p = await ui.prompt('PIN de administrador', 'password');
   if (!p) return;
   const { data, error } = await sb.rpc('v2_login', { s: SLUG, p });
-  if (error) ui.alert(error.message, 'Acceso bloqueado');
+  if (error) ui.alert(errMsg(error), tit(error, 'Acceso bloqueado'));
   else if (data && data.ok && data.token) { tok = data.token; await limite(); render(); }
   else ui.alert((data && data.error) || 'Intenta de nuevo.', 'No se pudo entrar');
 };
@@ -588,7 +614,7 @@ $('#adm').onclick = async () => {
 // Papelera (solo admin): lo borrado se conserva 90 días y luego se destruye solo
 async function abrePapelera() {
   const { data, error } = await sb.rpc('v2_papelera', { tok });
-  if (error) { ui.alert(error.message, 'No se pudo abrir la papelera'); if (vencida(error.message)) { tok = null; render(); } return; }
+  if (error) { ui.alert(errMsg(error), tit(error, 'No se pudo abrir la papelera')); if (vencida(error.message)) { tok = null; render(); } return; }
   pintaPapelera(data);
   if (!$('#pp').open) $('#pp').showModal();
 }
@@ -607,13 +633,13 @@ function pintaPapelera(items) {
 $('#pl').onclick = async e => {
   const id = e.target.dataset.r; if (!id) return;
   const { error } = await sb.rpc('v2_restaurar', { tok, i: +id });
-  if (error) { ui.alert(error.message, 'No se pudo restaurar'); return; }
+  if (error) { ui.alert(errMsg(error), tit(error, 'No se pudo restaurar')); return; }
   snack('Restaurado'); load(); await limite(); render(); abrePapelera();
 };
 $('#pv').onclick = async () => {
   if (!await ui.confirm('Se borrará todo lo que hay en la papelera. No se puede deshacer.', '¿Vaciar la papelera?', 'Sí, vaciar')) return;
   const { error } = await sb.rpc('v2_vaciar_papelera', { tok });
-  if (error) { ui.alert(error.message, 'No se pudo vaciar'); return; }
+  if (error) { ui.alert(errMsg(error), tit(error, 'No se pudo vaciar')); return; }
   snack('Papelera vaciada'); abrePapelera();
 };
 $('#px').onclick = () => $('#pp').close();
@@ -696,7 +722,10 @@ sb.channel('cal:' + SLUG)
 setInterval(() => { if (!document.hidden) { reload(); checkVersion(); } }, 30000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { reload(); checkVersion(); } });
 addEventListener('focus', reload);
-addEventListener('online', reload);
+const upd = () => { $('#off').hidden = navigator.onLine; };
+addEventListener('online', () => { upd(); reload(); });
+addEventListener('offline', upd);
+upd();
 addEventListener('pageshow', e => { if (e.persisted) reload(); });
 checkVersion();
 </script>
