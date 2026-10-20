@@ -686,9 +686,10 @@ async function checkVersion() {
 
 let t;
 const reload = () => { clearTimeout(t); t = setTimeout(() => load(true), 300); };
-sb.channel('calendario-live')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, p => { console.log('evento', p); reload(); })
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'farmacias' }, p => { console.log('evento', p); reload(); })
+// Tiempo real por Broadcast: cada cadena escucha solo su canal 'cal:<slug>'.
+// La base de datos (triggers) envía un aviso vacío 'cambio' y aquí se recarga con load().
+sb.channel('cal:' + SLUG)
+  .on('broadcast', { event: 'cambio' }, () => reload())
   .subscribe((status, err) => console.log('realtime:', status, err));
 // Respaldo para celulares: recargar cada 30 s mientras la página está visible,
 // y al volver a la pestaña, recuperar internet o salir del modo de espera
